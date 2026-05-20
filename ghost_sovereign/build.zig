@@ -48,13 +48,16 @@ pub fn build(b: *std.Build) void {
 
     // Synthesis Executables
     const synthesis_files = [_][]const u8{
-        "absolute_final_synthesis", "absolute_proof_synthesis", "absolute_synthesis",
-        "decoder_synthesis", "final_merge_synthesis", "ghost_infinity_synthesis",
-        "ghost_null_synthesis", "ghost_zero_synthesis", "grounded_singularity_synthesis",
-        "hardware_mirror_synthesis", "infinity_stress_test", "ingestion_strategy_synthesis",
-        "native_mirror_synthesis", "null_manifesto_synthesis", "primitive_resonance_synthesis",
-        "probe_map", "reiteration_synthesis", "simd_resonance_synthesis", "vsa_leap_synthesis",
-        "wiki_ingestion_synthesis", "zero_scalar_proof", "zero_unit_synthesis", "entangled_singularity_synthesis", "bridge_synthesis", "neologism_bridge_synthesis", "cli_overhaul_synthesis", "wave2_synthesis", "truth_verdict_synthesis", "wave3_synthesis", "semantic_overlap_synthesis",
+        "absolute_final_synthesis",   "absolute_proof_synthesis",        "absolute_synthesis",
+        "decoder_synthesis",          "final_merge_synthesis",           "ghost_infinity_synthesis",
+        "ghost_null_synthesis",       "ghost_zero_synthesis",            "grounded_singularity_synthesis",
+        "hardware_mirror_synthesis",  "infinity_stress_test",            "ingestion_strategy_synthesis",
+        "native_mirror_synthesis",    "null_manifesto_synthesis",        "primitive_resonance_synthesis",
+        "probe_map",                  "reiteration_synthesis",           "simd_resonance_synthesis",
+        "vsa_leap_synthesis",         "wiki_ingestion_synthesis",        "zero_scalar_proof",
+        "zero_unit_synthesis",        "entangled_singularity_synthesis", "bridge_synthesis",
+        "neologism_bridge_synthesis", "cli_overhaul_synthesis",          "wave2_synthesis",
+        "truth_verdict_synthesis",    "wave3_synthesis",                 "semantic_overlap_synthesis",
     };
 
     for (synthesis_files) |name| {
@@ -250,6 +253,284 @@ pub fn build(b: *std.Build) void {
     });
     addGhostImports(persistence_check.root_module, modules);
     b.installArtifact(persistence_check);
+
+    const proper_consultation = b.addExecutable(.{
+        .name = "proper_consultation",
+        .root_source_file = b.path("src/adapters/proper_consultation.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(proper_consultation.root_module, modules);
+    b.installArtifact(proper_consultation);
+
+    const measured_probe_names = [_][]const u8{
+        "ask_experts",
+        "debate_experts",
+        "audit_experts",
+        "omni_ingest_verdict",
+        "final_questions",
+        "total_audit",
+    };
+
+    for (measured_probe_names) |name| {
+        const measured_probe = b.addExecutable(.{
+            .name = name,
+            .root_source_file = b.path("src/adapters/measured_consultation_probe.zig"),
+            .target = target,
+            .optimize = optimize,
+        });
+        addGhostImports(measured_probe.root_module, modules);
+        b.installArtifact(measured_probe);
+    }
+
+    const void_translator = b.addExecutable(.{
+        .name = "void_translator",
+        .root_source_file = b.path("src/adapters/void_translator.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(void_translator.root_module, modules);
+    b.installArtifact(void_translator);
+
+    const void_translator_tests = b.addTest(.{
+        .root_source_file = b.path("src/adapters/void_translator.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(void_translator_tests.root_module, modules);
+    const run_void_translator_tests = b.addRunArtifact(void_translator_tests);
+    test_step.dependOn(&run_void_translator_tests.step);
+
+    const ingestion_scale = b.addExecutable(.{
+        .name = "ingestion_scale",
+        .root_source_file = b.path("src/adapters/ingestion_scale.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(ingestion_scale.root_module, modules);
+    b.installArtifact(ingestion_scale);
+
+    const ingestion_scale_tests = b.addTest(.{
+        .root_source_file = b.path("src/adapters/ingestion_scale.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(ingestion_scale_tests.root_module, modules);
+    const run_ingestion_scale_tests = b.addRunArtifact(ingestion_scale_tests);
+    test_step.dependOn(&run_ingestion_scale_tests.step);
+
+    const invention_chain = b.addExecutable(.{
+        .name = "invention_chain",
+        .root_source_file = b.path("src/adapters/invention_chain.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(invention_chain.root_module, modules);
+    b.installArtifact(invention_chain);
+
+    const invention_chain_tests = b.addTest(.{
+        .root_source_file = b.path("src/adapters/invention_chain.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(invention_chain_tests.root_module, modules);
+    const run_invention_chain_tests = b.addRunArtifact(invention_chain_tests);
+    test_step.dependOn(&run_invention_chain_tests.step);
+
+    const invention_relaxed = b.addExecutable(.{
+        .name = "invention_relaxed",
+        .root_source_file = b.path("src/adapters/invention_relaxed.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(invention_relaxed.root_module, modules);
+    b.installArtifact(invention_relaxed);
+
+    const invention_relaxed_tests = b.addTest(.{
+        .root_source_file = b.path("src/adapters/invention_relaxed.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(invention_relaxed_tests.root_module, modules);
+    const run_invention_relaxed_tests = b.addRunArtifact(invention_relaxed_tests);
+    test_step.dependOn(&run_invention_relaxed_tests.step);
+
+    const invention_global = b.addExecutable(.{
+        .name = "invention_global",
+        .root_source_file = b.path("src/adapters/invention_global.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(invention_global.root_module, modules);
+    b.installArtifact(invention_global);
+
+    const novelty_invention = b.addExecutable(.{
+        .name = "novelty_invention",
+        .root_source_file = b.path("src/adapters/novelty_invention.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(novelty_invention.root_module, modules);
+    b.installArtifact(novelty_invention);
+
+    const engine_genesis = b.addExecutable(.{
+        .name = "engine_genesis",
+        .root_source_file = b.path("src/adapters/engine_genesis.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(engine_genesis.root_module, modules);
+    b.installArtifact(engine_genesis);
+
+    const generated_geometry_invention = b.addExecutable(.{
+        .name = "generated_geometry_invention",
+        .root_source_file = b.path("src/adapters/generated_geometry_invention.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(generated_geometry_invention.root_module, modules);
+    b.installArtifact(generated_geometry_invention);
+
+    const geometry_artifact_compiler = b.addExecutable(.{
+        .name = "geometry_artifact_compiler",
+        .root_source_file = b.path("src/adapters/geometry_artifact_compiler.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(geometry_artifact_compiler.root_module, modules);
+    b.installArtifact(geometry_artifact_compiler);
+
+    const phase_lattice_inventor = b.addExecutable(.{
+        .name = "phase_lattice_inventor",
+        .root_source_file = b.path("src/adapters/phase_lattice_inventor.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(phase_lattice_inventor.root_module, modules);
+    b.installArtifact(phase_lattice_inventor);
+
+    const alien_breakthrough_inventor = b.addExecutable(.{
+        .name = "alien_breakthrough_inventor",
+        .root_source_file = b.path("src/adapters/alien_breakthrough_inventor.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(alien_breakthrough_inventor.root_module, modules);
+    b.installArtifact(alien_breakthrough_inventor);
+
+    const conceptless_inventor = b.addExecutable(.{
+        .name = "conceptless_inventor",
+        .root_source_file = b.path("src/adapters/conceptless_inventor.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(conceptless_inventor);
+
+    const synthesized_conceptless_breakthrough = b.addExecutable(.{
+        .name = "synthesized_conceptless_breakthrough",
+        .root_source_file = b.path("src/adapters/synthesized_conceptless_breakthrough.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(synthesized_conceptless_breakthrough);
+
+    const recursive_conceptless_inventor = b.addExecutable(.{
+        .name = "recursive_conceptless_inventor",
+        .root_source_file = b.path("src/adapters/recursive_conceptless_inventor.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(recursive_conceptless_inventor);
+
+    const recursive_conceptless_inventor_v2 = b.addExecutable(.{
+        .name = "recursive_conceptless_inventor_v2",
+        .root_source_file = b.path("src/adapters/recursive_conceptless_inventor_v2.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(recursive_conceptless_inventor_v2);
+
+    const recursive_conceptless_inventor_v3 = b.addExecutable(.{
+        .name = "recursive_conceptless_inventor_v3",
+        .root_source_file = b.path("src/adapters/recursive_conceptless_inventor_v3.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(recursive_conceptless_inventor_v3);
+
+    const recursive_conceptless_inventor_v4 = b.addExecutable(.{
+        .name = "recursive_conceptless_inventor_v4",
+        .root_source_file = b.path("src/adapters/recursive_conceptless_inventor_v4.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(recursive_conceptless_inventor_v4);
+
+    const program_synthesis_inventor = b.addExecutable(.{
+        .name = "program_synthesis_inventor",
+        .root_source_file = b.path("src/adapters/program_synthesis_inventor.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(program_synthesis_inventor);
+
+    const trained_semantic_bench = b.addExecutable(.{
+        .name = "trained_semantic_bench",
+        .root_source_file = b.path("src/adapters/trained_semantic_bench.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(trained_semantic_bench);
+
+    const train_hypervectors = b.addExecutable(.{
+        .name = "train_hypervectors",
+        .root_source_file = b.path("src/adapters/train_hypervectors.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(train_hypervectors);
+
+    const practrand_emit = b.addExecutable(.{
+        .name = "practrand_emit",
+        .root_source_file = b.path("src/adapters/practrand_emit.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(practrand_emit);
+
+    const program_synthesis_bootstrap = b.addExecutable(.{
+        .name = "program_synthesis_bootstrap",
+        .root_source_file = b.path("src/adapters/program_synthesis_bootstrap.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(program_synthesis_bootstrap);
+
+    const program_synthesis_bootstrap_v2 = b.addExecutable(.{
+        .name = "program_synthesis_bootstrap_v2",
+        .root_source_file = b.path("src/adapters/program_synthesis_bootstrap_v2.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(program_synthesis_bootstrap_v2);
+
+    const absolute_invention = b.addExecutable(.{
+        .name = "absolute_invention",
+        .root_source_file = b.path("src/adapters/absolute_invention.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(absolute_invention.root_module, modules);
+    b.installArtifact(absolute_invention);
+
+    const targeted_invention = b.addExecutable(.{
+        .name = "targeted_invention",
+        .root_source_file = b.path("src/adapters/targeted_invention.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(targeted_invention.root_module, modules);
+    b.installArtifact(targeted_invention);
 
     const anchor_readout_tests = b.addTest(.{
         .root_source_file = b.path("src/adapters/anchor_readout.zig"),

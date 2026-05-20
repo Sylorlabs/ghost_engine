@@ -1,0 +1,3 @@
+gen,closure_before,closure_after,nearest,nearest_dist,reason_dist,mean_vsa,drift_from_baseline
+1,9871560437345,29446095965,REASON,231,231,257.6000,262
+2,29446095965,22380143886,CRAVE,235,265,253.3000,262

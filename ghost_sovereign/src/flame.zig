@@ -74,8 +74,12 @@ pub const Laws = blk: {
         s = splitMix64(s +% i);
         
         // 1. Pick two semantic concepts based on the current state
-        const c1 = @as(vsa.Concept, @enumFromInt(s % 10));
-        const c2 = @as(vsa.Concept, @enumFromInt(splitMix64(s) % 10));
+        // Use full 20-concept enum so all VSA anchors seed laws (was % 10,
+        // which left 11 of 20 concepts dormant — verified 2026-05-19 via
+        // invention_global: HARDWARE/SOFTWARE/NETWORK/AETHER/VOID/TRUTH/
+        // SHADOW/SIGNAL/NOISE/ORDER/CHAOS all had zero attractor basins).
+        const c1 = @as(vsa.Concept, @enumFromInt(s % 20));
+        const c2 = @as(vsa.Concept, @enumFromInt(splitMix64(s) % 20));
         
         // 2. Extract their VSA Hypervectors
         const hv1 = vsa.getConceptHV(c1);
@@ -102,6 +106,8 @@ pub const Laws = blk: {
         laws[i].ca = d1 - 512; // Center around zero
         laws[i].cb = d2 - 512;
         laws[i].t = (dr - 512) * 100; // Scaled target resonance
+        // (Path A.2 tried adding ±64 magnitude floor here, made things
+        // worse — collapsed to 2 attractors instead of 11. Reverted.)
         
         s = splitMix64(s ^ @as(u64, @intCast(dr)));
     }

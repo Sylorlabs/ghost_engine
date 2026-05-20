@@ -1,4 +1,5 @@
 const std = @import("std");
+const vsa = @import("vsa");
 
 // --- GHOST ABSOLUTE: SHARDED DICTIONARY WALKER ---
 // Principle: mmap-backed bit-mixed lookups with 8 independent 4KB shards.
@@ -31,6 +32,9 @@ pub const AbsoluteCore = struct {
     field_count: usize,
     address_mask: usize,
     kernel: u64 = 0xBE496F1695F15480,
+    trained_hvs_loaded: bool = false,
+    trained_hvs: ?std.AutoHashMap(u64, vsa.Hypervector) = null,
+    allocator: std.mem.Allocator = std.heap.page_allocator,
 
     pub fn init(size_bytes: usize) !AbsoluteCore {
         return initAt(DefaultStatePath, size_bytes);
@@ -94,6 +98,89 @@ pub const AbsoluteCore = struct {
     /// 8 independent 4KB shards, so m1..m8 never write each other's slots.
     pub fn ingest(self: *AbsoluteCore, data: []const u8) void {
         _ = self.ingestMeasured(data);
+    }
+
+    pub fn loadTrainedHypervectors(self: *AbsoluteCore) void {
+        if (self.trained_hvs_loaded) return;
+        self.trained_hvs_loaded = true;
+        var file = std.fs.cwd().openFile("state/trained_hv.bin", .{}) catch blk: {
+            var child = std.process.Child.init(&[_][]const u8{
+                "./zig-out/bin/train_hypervectors",
+            }, self.allocator);
+            _ = child.spawnAndWait() catch return;
+            break :blk std.fs.cwd().openFile("state/trained_hv.bin", .{}) catch return;
+        };
+        defer file.close();
+        var map = std.AutoHashMap(u64, vsa.Hypervector).init(self.allocator);
+        var reader = file.reader();
+        while (true) {
+            const h = reader.readInt(u64, .little) catch break;
+            var hv = vsa.Hypervector.initEmpty();
+            for (&hv.data) |*w| {
+                w.* = reader.readInt(u64, .little) catch break;
+            }
+            map.put(h, hv) catch break;
+        }
+        self.trained_hvs = map;
+    }
+
+    pub fn ingestSemanticTrained(self: *AbsoluteCore, text: []const u8) IngestReport {
+        if (!self.trained_hvs_loaded) self.loadTrainedHypervectors();
+        var total = IngestReport{};
+        var it = std.mem.tokenizeAny(u8, text, " \t\r\n");
+        while (it.next()) |word| {
+            var clean_buf: [64]u8 = undefined;
+            var clean_len: usize = 0;
+            for (word) |c| {
+                const is_alpha = (c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z');
+                if (is_alpha) {
+                    if (clean_len < clean_buf.len) {
+                        clean_buf[clean_len] = if (c >= 'A' and c <= 'Z') c + 32 else c;
+                        clean_len += 1;
+                    }
+                }
+            }
+            const query_word = if (clean_len >= 2) clean_buf[0..clean_len] else word;
+
+            var hv: vsa.Hypervector = undefined;
+            if (self.trained_hvs) |map| {
+                if (map.get(hashWord(query_word))) |trained| {
+                    hv = trained;
+                } else {
+                    hv = vsa.Hypervector.initRandom(hashWord(word));
+                }
+            } else {
+                hv = vsa.Hypervector.initRandom(hashWord(word));
+            }
+            const bytes = std.mem.sliceAsBytes(hv.data[0..]);
+            const report = self.ingestMeasured(bytes);
+            total.bytes += report.bytes;
+            total.writes += report.writes;
+            if (report.dominant_delta > total.dominant_delta) {
+                total.dominant_delta = report.dominant_delta;
+                total.dominant_edge = report.dominant_edge;
+            }
+            total.edge_fingerprint = std.math.rotl(u64, total.edge_fingerprint ^ report.edge_fingerprint, 13);
+        }
+        return total;
+    }
+
+    pub fn ingestSemantic(self: *AbsoluteCore, text: []const u8) IngestReport {
+        var total = IngestReport{};
+        var it = std.mem.tokenizeAny(u8, text, " \t\r\n");
+        while (it.next()) |word| {
+            const hv = vsa.Hypervector.initRandom(hashWord(word));
+            const bytes = std.mem.sliceAsBytes(hv.data[0..]);
+            const report = self.ingestMeasured(bytes);
+            total.bytes += report.bytes;
+            total.writes += report.writes;
+            if (report.dominant_delta > total.dominant_delta) {
+                total.dominant_delta = report.dominant_delta;
+                total.dominant_edge = report.dominant_edge;
+            }
+            total.edge_fingerprint = std.math.rotl(u64, total.edge_fingerprint ^ report.edge_fingerprint, 13);
+        }
+        return total;
     }
 
     pub fn ingestMeasured(self: *AbsoluteCore, data: []const u8) IngestReport {
@@ -230,6 +317,15 @@ pub const AbsoluteCore = struct {
             if (field[idx] != 0) return false;
         }
         return true;
+    }
+
+    fn hashWord(word: []const u8) u64 {
+        var h: u64 = 0xCBF29CE484222325;
+        for (word) |b| {
+            h ^= @as(u64, b);
+            h *%= 0x100000001B3;
+        }
+        return h;
     }
 
     fn mixWalker(

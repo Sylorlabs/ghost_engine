@@ -407,7 +407,7 @@ zig build
 # Placeholder CLI: pressure-shapes the message, then prints a canned success line
 ./zig-out/bin/ghost_invent_void invent --message="test"
 
-# Ask experts (outputs hex marks + deltas, no language)
+# Measured consultation probes (reservoir numbers only, no language generation)
 ./zig-out/bin/ask_experts
 ./zig-out/bin/debate_experts
 
