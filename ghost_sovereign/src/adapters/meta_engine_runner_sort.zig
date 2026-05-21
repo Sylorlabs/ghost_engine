@@ -1,5 +1,5 @@
 const std = @import("std");
-const meta = @import("domain_meta_engine.zig");
+const meta = @import("domain_meta_engine_sort.zig");
 
 // Outer search: discover MetaPrograms (engines) whose run() returns
 // high q_best over inner steps K. Fitness of a candidate MetaProgram =
