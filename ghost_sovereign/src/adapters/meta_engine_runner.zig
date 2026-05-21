@@ -31,6 +31,8 @@ const Cli = struct {
     eval_seeds: u32 = 3,
     root_seed: u64 = 0xC0FFEE_BAD_CAFE_12,
     out_dir: []const u8 = "results/meta_engine",
+    holdout_seeds: u32 = 16,           // 0 = disable hold-out gate
+    catastrophe_floor: f64 = -100.0,
 };
 
 fn parseCli(args: [][:0]u8) Cli {
@@ -48,6 +50,8 @@ fn parseCli(args: [][:0]u8) Cli {
             c.root_seed = parseU64Hex(a["--seed=".len..]) catch c.root_seed;
         } else if (std.mem.startsWith(u8, a, "--out-dir=")) {
             c.out_dir = a["--out-dir=".len..];
+        } else if (std.mem.startsWith(u8, a, "--holdout-seeds=")) {
+            c.holdout_seeds = std.fmt.parseInt(u32, a["--holdout-seeds=".len..], 10) catch c.holdout_seeds;
         }
     }
     return c;
@@ -110,31 +114,73 @@ pub fn main() !void {
     const log = log_file.writer();
     try log.writeAll("iter,candidate_fit,best_fit,accepted,len\n");
 
+    // HOLD-OUT GATE (v4): larger probe (16 seeds), strict tolerance
+    // (no slack), AND a catastrophe veto: if ANY hold-out seed scores
+    // below CatastropheFloor, candidate is rejected regardless of
+    // mean. v3 failed because 4-seed gate didn't detect catastrophic-
+    // init failures; the catastrophe veto closes that gap.
+    const holdout_seeds: u32 = cli.holdout_seeds;
+    const holdout_root: u64 = cli.root_seed ^ 0x5A5A_5A5A_5A5A_5A5A;
+    const CatastropheFloor: f64 = cli.catastrophe_floor;
     var accepted: u32 = 0;
+    var rejected_by_holdout: u32 = 0;
+    var rejected_by_catastrophe: u32 = 0;
     var i: u32 = 0;
     while (i < cli.outer_iters) : (i += 1) {
-        // Rotate the eval seed set every iteration. Re-evaluate BOTH
-        // best and candidate on this iteration's seed set so the
-        // comparison is fair. A program can only win if it beats best
-        // on a freshly-drawn seed set — no overfit to a fixed one.
         const best_fit_epoch = fitnessOfEpoch(best, cli.inner_steps, cli.eval_seeds, cli.root_seed, i);
         const candidate = meta.mutateMeta(best, &rng);
         const cand_fit = fitnessOfEpoch(candidate, cli.inner_steps, cli.eval_seeds, cli.root_seed, i);
-        const better = cand_fit > best_fit_epoch;
-        if (better) {
+        const epoch_better = cand_fit > best_fit_epoch;
+        var accepted_this_iter = false;
+        var label: []const u8 = "rejected";
+        if (epoch_better and holdout_seeds == 0) {
+            // Hold-out gate disabled: rotation-only acceptance.
             best = candidate;
             best_fit = cand_fit;
             accepted += 1;
+            accepted_this_iter = true;
+            label = "ACCEPTED";
+        } else if (epoch_better) {
+            // Catastrophe veto: scan each hold-out seed individually.
+            var cat_seed: u64 = holdout_root;
+            var any_catastrophe = false;
+            var cand_holdout_total: f64 = 0;
+            var hs: u32 = 0;
+            while (hs < holdout_seeds) : (hs += 1) {
+                cat_seed = smix(cat_seed +% 0x9E37_79B1 +% hs);
+                var q = meta.run(candidate, cli.inner_steps, cat_seed);
+                if (std.math.isInf(q) or std.math.isNan(q)) q = 0.0;
+                cand_holdout_total += q;
+                if (q < CatastropheFloor) { any_catastrophe = true; break; }
+            }
+            if (any_catastrophe) {
+                rejected_by_catastrophe += 1;
+                label = "rej-by-catastrophe";
+            } else {
+                const cand_holdout = cand_holdout_total / @as(f64, @floatFromInt(holdout_seeds));
+                const best_holdout = fitnessOf(best, cli.inner_steps, holdout_seeds, holdout_root);
+                if (cand_holdout >= best_holdout) {
+                    best = candidate;
+                    best_fit = cand_fit;
+                    accepted += 1;
+                    accepted_this_iter = true;
+                    label = "ACCEPTED";
+                } else {
+                    rejected_by_holdout += 1;
+                    label = "rej-by-holdout";
+                }
+            }
         }
         try log.print("{d},{d:.4},{d:.4},{d},{d}\n", .{
-            i, cand_fit, best_fit_epoch, @as(u8, if (better) 1 else 0), candidate.used,
+            i, cand_fit, best_fit_epoch, @as(u8, if (accepted_this_iter) 1 else 0), candidate.used,
         });
-        if (i % 25 == 0 or better) {
+        if (i % 25 == 0 or accepted_this_iter) {
             try stdout.print("  iter {d}: cand={d:.3} best(epoch)={d:.3} {s}\n", .{
-                i, cand_fit, best_fit_epoch, if (better) "ACCEPTED" else "rejected",
+                i, cand_fit, best_fit_epoch, label,
             });
         }
     }
+    try stdout.print("\nrejected_by_holdout={d} rejected_by_catastrophe={d}\n", .{ rejected_by_holdout, rejected_by_catastrophe });
     try stdout.print(
         "\nfinal: best_fit={d:.4} accepted={d}/{d}\n",
         .{ best_fit, accepted, cli.outer_iters },

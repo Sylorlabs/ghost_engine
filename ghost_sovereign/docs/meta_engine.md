@@ -152,6 +152,80 @@ discovered by outer search, not hand-designed.
   the first defensible positive demonstration in this project's
   chain-of-engines line of work.
 
+## v3 — hold-out gate with 4-seed probe (FAILED)
+
+Added a 4-seed hold-out probe; outer mutation accepted only if cand
+also met `best_holdout - 2.0` on the probe. Used `eval_seeds=10`.
+
+Result: held-out mean **–1043** (catastrophic). The 4-seed probe was
+too small to detect catastrophic-init failures, and the 2.0
+tolerance allowed gradual hold-out degradation. v3 confirmed the
+hold-out gate *architecture* works (35 rejected_by_holdout) but the
+hyperparameters were wrong.
+
+## v4 — strict hold-out + catastrophe veto (also worse)
+
+Bumped hold-out to 16 seeds, removed tolerance, added a catastrophe
+veto (any single hold-out seed below –100 → reject).
+
+Result: held-out mean **21.66** — better than v3 but worse than v2.
+Only 7/300 outer mutations accepted (vs 64 in v2). The veto pushed
+search toward random-search-like programs (the discovered champion
+has `INIT_CUR` in the middle of the loop). Over-constrained.
+
+**Architectural finding:** at this domain/budget, **seed rotation
+alone is sufficient generalisation defense**. Adding strict hold-out
+gates over-constrains search and produces worse engines than
+rotation-only.
+
+## v5 — rotation-only at high budget (inner_steps=1000)
+
+Same setup as v2 (rotation only, `eval_seeds=5`) but at
+`inner_steps=1000` where canonical hill-climb already scores 47.07.
+
+Result: held-out **46.81**, max 47.93. Discovered engine is 6 ops,
+near-canonical hill-climb shape. **Engine-inventing-engine matches
+but does not beat** canonical hill-climb when the baseline is
+already strong.
+
+## Scaling comparison (v2 champion, evaluated at multiple budgets)
+
+The v2 champion (discovered at `inner_steps=400`) was re-evaluated
+at multiple budgets and compared head-to-head against baselines:
+
+| inner_steps | random-restart | hill-climb | **v2 discovered** |
+| ----------- | -------------- | ---------- | ----------------- |
+| 200         |   3.19         |  -1088     | **18.36**         |
+| 400         |  21.01         |  -519      | **36.18**         |
+| 1000        |  34.30         |  47.07     | **47.29**         |
+| 2000        |  39.65         |  47.62     | **47.63**         |
+
+The v2 engine matches or beats canonical hill-climb at EVERY budget,
+and at low budgets the gap is transformative (hill-climb is dragged
+down by catastrophic stuck-init outliers; v2 has no such failure mode).
+This is generalisation across budget — v2 was searched at 400 and
+still wins at 1000 and 2000.
+
+## Honest characterization across all v1–v5 experiments
+
+| metric                              | v1 fixed | v2 rotation | v3 4-seed-gate | v4 strict-gate | v5 hi-budget |
+| ----------------------------------- | -------- | ----------- | -------------- | -------------- | ------------ |
+| held-out mean                        | 25.01   | **33.12**   |  -1043         |  21.66         |  46.81       |
+| held-out min                         | -89.85  | -89.85      | -10714         | -89.06         |  39.71       |
+| held-out max                         | 47.77   | 47.77       |  47.82         | 47.81          |  47.93       |
+| accepted outer mutations             | 5/300   | 64/300      |  26/300        |  7/300         |  46/200      |
+| inner_steps                          | 400     | 400         |  400           |  400           |  1000        |
+
+**Strongest result remains v2 at inner_steps=400.** Architecture choice
+matters: seed rotation alone outperforms rotation + hold-out gate at
+this budget.
+
+**Engine-inventing-engine works where hand-coded engines have known
+weaknesses** (catastrophic stuck-init at low budget) and **rediscovers
+canonical structure** where they're already near-optimal. It does not
+yet find an algorithmic advantage at high-budget regime, where the
+quality metric is saturated.
+
 ## Next steps (in priority order)
 
 1. **Seed rotation in outer search**: each outer iteration evaluates

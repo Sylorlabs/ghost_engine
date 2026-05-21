@@ -1,0 +1,20 @@
+=== inner_steps=200 eval_seeds=20 ===
+baseline reference engines: inner_steps=200 eval_seeds=20
+  null (eval-only)          mean=-9291.1718 min=-10877.7500 max=-255.2074 (n=20, len=2)
+  random-restart            mean=3.1886 min=-98.6610 max=44.6719 (n=20, len=3)
+  hill-climb (canonical)    mean=-1088.0146 min=-10719.2500 max=47.5972 (n=20, len=3)
+=== inner_steps=400 eval_seeds=20 ===
+baseline reference engines: inner_steps=400 eval_seeds=20
+  null (eval-only)          mean=-9291.1718 min=-10877.7500 max=-255.2074 (n=20, len=2)
+  random-restart            mean=21.0124 min=-23.3491 max=44.6719 (n=20, len=3)
+  hill-climb (canonical)    mean=-519.3586 min=-10714.2500 max=47.6606 (n=20, len=3)
+=== inner_steps=1000 eval_seeds=20 ===
+baseline reference engines: inner_steps=1000 eval_seeds=20
+  null (eval-only)          mean=-9291.1718 min=-10877.7500 max=-255.2074 (n=20, len=2)
+  random-restart            mean=34.2964 min=-9.1865 max=46.5931 (n=20, len=3)
+  hill-climb (canonical)    mean=47.0671 min=39.1398 max=47.9266 (n=20, len=3)
+=== inner_steps=2000 eval_seeds=20 ===
+baseline reference engines: inner_steps=2000 eval_seeds=20
+  null (eval-only)          mean=-9291.1718 min=-10877.7500 max=-255.2074 (n=20, len=2)
+  random-restart            mean=39.6546 min=13.1996 max=46.5931 (n=20, len=3)
+  hill-climb (canonical)    mean=47.6218 min=46.7785 max=47.9805 (n=20, len=3)

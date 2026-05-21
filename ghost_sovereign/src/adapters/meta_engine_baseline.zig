@@ -73,6 +73,37 @@ fn evalAcross(m: meta.MetaProgram, inner_steps: u32, eval_seeds: u32, root: u64)
     return .{ .mean = total / @as(f64, @floatFromInt(eval_seeds)), .min = mn, .max = mx };
 }
 
+fn loadMetaFromCsv(alloc: std.mem.Allocator, path: []const u8) !meta.MetaProgram {
+    const file = try std.fs.cwd().openFile(path, .{});
+    defer file.close();
+    const contents = try file.readToEndAlloc(alloc, 1 << 20);
+    defer alloc.free(contents);
+
+    var p = meta.MetaProgram{ .instructions = undefined, .used = 0 };
+    var lines = std.mem.tokenizeAny(u8, contents, "\n\r");
+    var first = true;
+    while (lines.next()) |line| {
+        if (first) { first = false; continue; } // header
+        var fields = std.mem.tokenizeAny(u8, line, ",");
+        _ = fields.next() orelse continue; // idx
+        const op_id_s = fields.next() orelse continue;
+        _ = fields.next() orelse continue; // op_name
+        const dst_s = fields.next() orelse continue;
+        const src1_s = fields.next() orelse continue;
+        const src2_s = fields.next() orelse continue;
+        const op_id = try std.fmt.parseInt(u4, op_id_s, 10);
+        const dst = try std.fmt.parseInt(u2, dst_s, 10);
+        const src1 = try std.fmt.parseInt(u2, src1_s, 10);
+        const src2 = try std.fmt.parseInt(u2, src2_s, 10);
+        p.instructions[p.used] = .{
+            .op = @enumFromInt(op_id), .dst = dst, .src1 = src1, .src2 = src2,
+        };
+        p.used += 1;
+        if (p.used >= meta.MaxMetaLen) break;
+    }
+    return p;
+}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -83,11 +114,17 @@ pub fn main() !void {
     var inner_steps: u32 = 400;
     var eval_seeds: u32 = 10;
     const root: u64 = 0xCAFE_F00D_DEAD_BABE;
+    var load_csv: ?[]const u8 = null;
+    var load_label: []const u8 = "loaded";
     for (args) |a| {
         if (std.mem.startsWith(u8, a, "--inner-steps=")) {
             inner_steps = std.fmt.parseInt(u32, a["--inner-steps=".len..], 10) catch inner_steps;
         } else if (std.mem.startsWith(u8, a, "--eval-seeds=")) {
             eval_seeds = std.fmt.parseInt(u32, a["--eval-seeds=".len..], 10) catch eval_seeds;
+        } else if (std.mem.startsWith(u8, a, "--load=")) {
+            load_csv = a["--load=".len..];
+        } else if (std.mem.startsWith(u8, a, "--label=")) {
+            load_label = a["--label=".len..];
         }
     }
 
@@ -105,6 +142,15 @@ pub fn main() !void {
         try stdout.print(
             "  {s:<25} mean={d:.4} min={d:.4} max={d:.4} (n={d}, len={d})\n",
             .{ c.name, r.mean, r.min, r.max, eval_seeds, c.prog.used },
+        );
+    }
+
+    if (load_csv) |path| {
+        const loaded = try loadMetaFromCsv(alloc, path);
+        const r = evalAcross(loaded, inner_steps, eval_seeds, root);
+        try stdout.print(
+            "  {s:<25} mean={d:.4} min={d:.4} max={d:.4} (n={d}, len={d})  [{s}]\n",
+            .{ load_label, r.mean, r.min, r.max, eval_seeds, loaded.used, path },
         );
     }
 }
