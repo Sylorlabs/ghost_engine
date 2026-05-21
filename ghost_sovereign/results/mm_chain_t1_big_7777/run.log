@@ -1,0 +1,40 @@
+=== TIER-1 CHAIN RUNNER ===
+generations=4 tier1_iters=200 mm_outer_iters=12 tier0_inner_steps=150 root_seed=0x7777888899990000 wide_call_meta=false
+
+--- generation 0 | chain_extras_len=0 ---
+  init pool best anchor-mean q=-2736.7378
+  iter 7 accepted anchor=-505.6199
+  iter 11 accepted anchor=-80.5287
+  gen 0: accepted=2/200 anchor_mean=-80.5287 holdout=-1399.5328 mm_evals=712
+verdict: ADVANCE  (holdout -1399.5328 vs prev 0.0000)
+
+--- generation 1 | chain_extras_len=1 ---
+  init pool best anchor-mean q=44.4594
+  iter 0 accepted anchor=47.2047
+  iter 131 accepted anchor=47.5923
+  iter 139 accepted anchor=47.6442
+  gen 1: accepted=3/200 anchor_mean=47.6442 holdout=-1399.5328 mm_evals=696
+verdict: ADVANCE(tie)  (holdout -1399.5328 vs prev -1399.5328)
+
+--- generation 2 | chain_extras_len=2 ---
+  init pool best anchor-mean q=-87.2527
+  iter 2 accepted anchor=-10.0225
+  iter 37 accepted anchor=6.2636
+  iter 39 accepted anchor=12.5136
+  iter 79 accepted anchor=19.7329
+  iter 80 accepted anchor=46.8883
+  iter 100 accepted anchor=47.5780
+  gen 2: accepted=6/200 anchor_mean=47.5780 holdout=-1376.4092 mm_evals=756
+verdict: ADVANCE + STRICT_DOMINATION  (holdout -1376.4092 vs prev -1399.5328)
+
+--- generation 3 | chain_extras_len=3 ---
+  init pool best anchor-mean q=44.4002
+  iter 15 accepted anchor=46.2337
+  iter 95 accepted anchor=47.3278
+  iter 100 accepted anchor=47.4657
+  gen 3: accepted=3/200 anchor_mean=47.4657 holdout=-1399.5328 mm_evals=684
+verdict: HALT(holdout_regression)  (holdout -1399.5328 vs prev -1376.4092)
+
+=== CHAIN RESULT ===
+HALTED at generation 3
+STRICT_DOMINATION ever observed: YES

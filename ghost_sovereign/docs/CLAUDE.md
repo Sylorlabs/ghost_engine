@@ -225,6 +225,73 @@ Ghost Sovereign is a reservoir computer built in Zig. Its 512-dimensional constr
 
 ---
 
+## Meta-Engine / Invention Chain Research (as of 2026-05-21)
+
+The project also contains a **program synthesis research stack** for
+engine-inventing-engine experiments. This is separate from the
+reservoir computer above.
+
+### Architecture (3 tiers)
+
+| Tier | Module | What it searches over | What it produces |
+|------|--------|-----------------------|------------------|
+| 0 | `domain_meta_engine.zig` | u64 mixer programs (MetaProgram) | A mixer with fitness score |
+| 1 | `domain_meta_meta_engine.zig` | Search algorithms (MetaMetaProgram / MMP) | A MetaProgram discoverer |
+| 2 | `domain_meta_meta_meta_engine.zig` | Search-algorithm discoverers (MMMP) | An MMP discoverer |
+
+Each tier's fitness is the tier below's best score — apples-to-apples
+comparison across all tiers.
+
+### Key results
+
+- **Tier-1 chain with CALL_META** works: 3/4 seeds produce
+  STRICT_DOMINATION steps. Best holdout: **44.30** (seed 0x1111),
+  beating the hand-coded baseline (32.55). Validated on 64-seed
+  held-out set.
+- **Wide CALL_META** (`--wide-call-meta`): 4-bit library addressing
+  instead of 2-bit. Wins 2/3 seeds at best-holdout. **Recommended
+  default for chains with >4 library entries.**
+- **Bigger budget (200 iters)**: **REFUTED.** All 4 seeds get worse
+  holdout. The 4-anchor generalization protection has a budget-
+  dependent failure mode. **24 iters is the correct operating point.**
+- **Tier-2 MMMP**: Built and runs. Shows progressive learning
+  (sentinel → finite anchor → STRICT_DOMINATION → right primitives
+  wrong order) but holdout is -10,813 — 5 orders of magnitude worse
+  than Tier-1's 44.30. Not yet competitive.
+- **44.30 ceiling**: Reproduced across multiple seeds and recipes.
+  Appears to be a property of (Tier-0 opcode set + budget), not a
+  seed fluke. Breaking it likely requires expanding Tier-0 primitives.
+
+### Key files
+
+| File | Purpose |
+|------|---------|
+| `src/adapters/domain_meta_engine.zig` | Tier-0: MetaProgram type + run |
+| `src/adapters/domain_meta_meta_engine.zig` | Tier-1: MMP type + run + wide CALL_META toggle |
+| `src/adapters/domain_meta_meta_meta_engine.zig` | Tier-2: MMMP type + run |
+| `src/adapters/meta_meta_chain_runner.zig` | Tier-1 chain runner (multi-gen, anchor-protected) |
+| `src/adapters/mmm_chain_runner.zig` | Tier-2 chain runner |
+| `src/adapters/champion_holdout_validation.zig` | 64-seed holdout validator |
+| `docs/tier1_meta_engine.md` | Tier-1 detailed findings |
+| `docs/tier2_meta_meta_engine.md` | Tier-2 detailed findings |
+| `docs/successor_loop_research.md` | Complete research round (all 3 tests) |
+| `results/mm_chain_*/` | Tier-1 experiment data |
+| `results/mmm_chain_*/` | Tier-2 experiment data |
+
+### Operational warnings
+
+- **Do NOT increase tier1_iters past 24** without also increasing
+  anchor count. The search will overfit the 4 anchor seeds.
+- **Use `--wide-call-meta`** when seed-library has >4 entries.
+- **Tier-2 is research-only.** It runs but doesn't produce competitive
+  results. Don't report it as "working" — report it as "implemented,
+  shows learning progression, not yet competitive."
+- **Always use the disciplined baseline** (anchor protection + seed
+  rotation) for comparisons. Undisciplined baselines overfit and make
+  Tier-1 look artificially good.
+
+---
+
 ## Full Reference
 
 See `ARCHITECTURE.md` in this directory for the complete technical reference including benchmark numbers, per-component analysis, engineering decisions, and the theater vs real distinction.

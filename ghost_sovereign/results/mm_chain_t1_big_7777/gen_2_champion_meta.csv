@@ -1,0 +1,10 @@
+idx,op_id,op_name,dst,src1,src2,used_len
+0,6,ACCEPT_SA,2,0,2,9
+1,1,MUTATE_CUR,0,0,1,9
+2,2,MUTATE_BEST_TO_CUR,2,2,2,9
+3,6,ACCEPT_SA,1,3,2,9
+4,8,RAND_REG,3,1,3,9
+5,12,NOP,2,1,3,9
+6,10,REG_SHR,1,1,3,9
+7,4,EVAL_CUR,1,1,0,9
+8,12,NOP,1,2,1,9

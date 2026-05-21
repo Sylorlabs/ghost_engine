@@ -1,0 +1,25 @@
+=== TIER-2 CHAIN RUNNER (MMMP) ===
+generations=3 tier2_iters=24 mmm_outer_iters=8 tier1_outer_iters=8 tier0_inner_steps=120 root_seed=0xF00DBEEFCAFEFACE
+
+--- generation 0 | chain_extras_mm_len=0 ---
+  init pool best anchor-mean q=-500032.9862
+  iter 18 accepted anchor=-500012.4897
+  gen 0: accepted=1/24 anchor_mean=-500012.4897 holdout=-1000000.0000 mmm_evals=120
+verdict: ADVANCE  (holdout -1000000.0000 vs prev 0.0000)
+
+--- generation 1 | chain_extras_mm_len=1 ---
+  init pool best anchor-mean q=-35.6254
+  iter 1 accepted anchor=45.6160
+  gen 1: accepted=1/24 anchor_mean=45.6160 holdout=-1000000.0000 mmm_evals=128
+verdict: ADVANCE(tie)  (holdout -1000000.0000 vs prev -1000000.0000)
+
+--- generation 2 | chain_extras_mm_len=2 ---
+  init pool best anchor-mean q=-28.2635
+  iter 4 accepted anchor=18.5446
+  iter 8 accepted anchor=38.0674
+  gen 2: accepted=2/24 anchor_mean=38.0674 holdout=-10812.8125 mmm_evals=144
+verdict: ADVANCE + STRICT_DOMINATION  (holdout -10812.8125 vs prev -1000000.0000)
+
+=== CHAIN RESULT ===
+Completed 3 generations.
+STRICT_DOMINATION ever observed: YES

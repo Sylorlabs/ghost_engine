@@ -570,6 +570,38 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(meta_engine_baseline_sort);
 
+    const meta_meta_engine_runner = b.addExecutable(.{
+        .name = "meta_meta_engine_runner",
+        .root_source_file = b.path("src/adapters/meta_meta_engine_runner.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(meta_meta_engine_runner);
+
+    const meta_meta_chain_runner = b.addExecutable(.{
+        .name = "meta_meta_chain_runner",
+        .root_source_file = b.path("src/adapters/meta_meta_chain_runner.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(meta_meta_chain_runner);
+
+    const mmm_chain_runner = b.addExecutable(.{
+        .name = "mmm_chain_runner",
+        .root_source_file = b.path("src/adapters/mmm_chain_runner.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(mmm_chain_runner);
+
+    const champion_holdout_validation = b.addExecutable(.{
+        .name = "champion_holdout_validation",
+        .root_source_file = b.path("src/adapters/champion_holdout_validation.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(champion_holdout_validation);
+
     const search_strategy_meta = b.addExecutable(.{
         .name = "search_strategy_meta",
         .root_source_file = b.path("src/adapters/search_strategy_meta.zig"),
@@ -679,6 +711,34 @@ pub fn build(b: *std.Build) void {
     });
     addGhostImports(understanding_bench.root_module, modules);
     b.installArtifact(understanding_bench);
+
+    // verify_cli: code→SMT verification for discovered champions.
+    // Standalone — no Ghost modules. Links to system libz3.
+    const verify_cli = b.addExecutable(.{
+        .name = "verify_cli",
+        .root_source_file = b.path("src/adapters/verify_cli.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    verify_cli.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+    verify_cli.root_module.addLibraryPath(.{ .cwd_relative = "/usr/lib/x86_64-linux-gnu" });
+    verify_cli.root_module.linkSystemLibrary("z3", .{});
+    verify_cli.root_module.linkSystemLibrary("c", .{});
+    b.installArtifact(verify_cli);
+
+    // verify_qflia_smoke: standalone smoke test exercising the exact
+    // verifySmt pattern wired into ghost_engine/src/invent_cli.zig.
+    const verify_qflia_smoke = b.addExecutable(.{
+        .name = "verify_qflia_smoke",
+        .root_source_file = b.path("src/adapters/verify_qflia_smoke.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    verify_qflia_smoke.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+    verify_qflia_smoke.root_module.addLibraryPath(.{ .cwd_relative = "/usr/lib/x86_64-linux-gnu" });
+    verify_qflia_smoke.root_module.linkSystemLibrary("z3", .{});
+    verify_qflia_smoke.root_module.linkSystemLibrary("c", .{});
+    b.installArtifact(verify_qflia_smoke);
 
     const understanding_bench_tests = b.addTest(.{
         .root_source_file = b.path("src/adapters/understanding_bench.zig"),

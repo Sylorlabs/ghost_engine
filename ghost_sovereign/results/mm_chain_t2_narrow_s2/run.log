@@ -1,0 +1,32 @@
+=== TIER-1 CHAIN RUNNER ===
+generations=4 tier1_iters=40 mm_outer_iters=12 tier0_inner_steps=150 root_seed=0x9999AAAABBBBCCCC wide_call_meta=false
+seeded library[0] = results/mm_chain_1111222233334444/gen_0_champion_meta.csv  (15 instrs)
+seeded library[1] = results/mm_chain_1111222233334444/gen_1_champion_meta.csv  (15 instrs)
+seeded library[2] = results/mm_chain_1111222233334444/gen_2_champion_meta.csv  (16 instrs)
+seeded library[3] = results/mm_chain_1111222233334444/gen_3_champion_meta.csv  (16 instrs)
+seeded library[4] = results/mm_chain_7777888899990000/gen_0_champion_meta.csv  (8 instrs)
+seeded library[5] = results/mm_chain_7777888899990000/gen_1_champion_meta.csv  (7 instrs)
+seeded library[6] = results/mm_chain_7777888899990000/gen_2_champion_meta.csv  (13 instrs)
+seeded library[7] = results/mm_chain_7777888899990000/gen_3_champion_meta.csv  (9 instrs)
+
+--- generation 0 | chain_extras_len=8 ---
+  init pool best anchor-mean q=43.3458
+  iter 1 accepted anchor=44.6234
+  gen 0: accepted=1/40 anchor_mean=44.6234 holdout=3.2260 mm_evals=256
+verdict: ADVANCE  (holdout 3.2260 vs prev 0.0000)
+
+--- generation 1 | chain_extras_len=9 ---
+  init pool best anchor-mean q=47.3815
+  iter 6 accepted anchor=47.6387
+  gen 1: accepted=1/40 anchor_mean=47.6387 holdout=36.7452 mm_evals=240
+verdict: ADVANCE + STRICT_DOMINATION  (holdout 36.7452 vs prev 3.2260)
+
+--- generation 2 | chain_extras_len=10 ---
+  init pool best anchor-mean q=11.0427
+  iter 13 accepted anchor=31.0995
+  gen 2: accepted=1/40 anchor_mean=31.0995 holdout=-169.2750 mm_evals=268
+verdict: HALT(holdout_regression)  (holdout -169.2750 vs prev 36.7452)
+
+=== CHAIN RESULT ===
+HALTED at generation 2
+STRICT_DOMINATION ever observed: YES
