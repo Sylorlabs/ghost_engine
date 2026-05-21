@@ -254,3 +254,123 @@ iters than u64-mixer to converge per `project_domain_spec.md`, which
 suggests headroom. A v3 chain on boolean (or sort-net) would test
 whether the successor architecture actually wins when the quality
 ceiling is higher than the current run can reach.
+
+---
+
+## v3 — Sort-net N=8 chain (2026-05-20, same day, negative result with sharp diagnostic)
+
+After u64-mixer empirically demonstrated the architectural successor
+(CALL_LIB in gen_{1,2,3} champions) but no measurable cumulative gain
+because the metric was saturated, we ported the v2 chain pattern to
+`domain_sort_net.zig` (N=8 sorting networks) on the hypothesis that
+sort-net has an *unsaturated* progress axis — depth (parallel
+comparator layers, lower-is-better). The known SOTA is depth 6
+(Bose-Nelson 1962); library entries Floyd-8 and Batcher-8 both depth 6.
+
+### Architecture (additive — substrate stays regression-clean)
+
+1. **`domain_sort_net.zig`**: added `kind` field to `Comparator`
+   (`kind=0`: normal compare-exchange; `kind=1`: CALL_LIB-style macro
+   that executes `chain_extras[i % chain_extras.len]` inline). All
+   library entries default `kind=0`. With `chain_extras` empty,
+   `randomComparator` never emits `kind=1`. Substrate regression on
+   all three domains (u64, sort, boolean) still produces INVENTION (strict).
+2. **Recursion guard**: same pattern as u64-mixer — `threadlocal var
+   call_lib_depth` with `MaxCallLibDepth=8`.
+3. **`chain_runner_sort.zig`**: novelty-adjusted SA with custom fitness
+   that heavily weights depth post-correctness. `--lambda` and
+   `--depth-weight` CLI flags.
+4. **Strict_domination verdict added**: passes invention-strict AND
+   `new_depth < prev_depth`. Halt-on-regression uses depth (not the
+   substrate's flat composite, which masks the signal).
+
+### Seed-noise baseline (`results/chain_sort_variance/seed_noise_gen0.txt`)
+
+10 independent gen-0 runs at iters=50000:
+
+| Seed | size | depth |
+|------|------|-------|
+| 1111... | 22 | 11 |
+| 2222... | 20 | **7** |
+| 3333... | 24 | 9  |
+| 4444... | 23 | 10 |
+| 5555... | 22 | 9  |
+| 6666... | 24 | 11 |
+| 7777... | 25 | 9  |
+| 8888... | 21 | 8  |
+| 9999... | 24 | 10 |
+| AAAA... | 22 | 8  |
+
+- Mean depth 9.2, **σ(depth) ≈ 1.3**, min 7, max 11.
+- Substrate alone occasionally finds depth-7 (1/10 seeds). Defensible
+  strict_domination requires reaching depth 6.
+
+### Chain results (6 root seeds × varied iter budgets)
+
+| root seed | iters | gen 0 depth | gen 1 depth | Δdepth | verdict |
+|-----------|-------|-------------|-------------|--------|---------|
+| CAFEBABE12345678 | 50K   | 10 | 17 | +7 | HALT(depth_regression) |
+| CAFEBABE12345678 | 200K  | 10 | 15 | +5 | HALT(depth_regression) |
+| 1111...          | 50K   | 11 | 18 | +7 | HALT(depth_regression) |
+| 2222...          | 50K   | 8  | 14 | +6 | HALT(depth_regression) |
+| 3333...          | 50K   | 10 | 15 | +5 | HALT(depth_regression) |
+| 4444...          | 50K   | 10 | 17 | +7 | HALT(depth_regression) |
+| 5555...          | 50K   | 8  | 13 | +5 | HALT(depth_regression) |
+
+**6/6 chains halt at gen 1 on depth regression. Every gen-1 depth is
++5 to +7 above gen 0's depth. STRICT_DOMINATION observed: 0/7.**
+
+### Diagnostic — the headline finding
+
+The successor architecture IS firing (gen-1 programs contain `kind=1`
+CALL_LIB comparators — confirmed in `results/chain_sort/gen_1_champion.csv`).
+But CALL_LIB is **anti-aligned with the depth progress axis** for
+sorting networks: composing two correct sorters produces a correct
+sorter with depth equal to the *sum* of their depths. Any CALL_LIB(k)
+in a gen-1 program adds champion_gen_k's depth on top of whatever
+else the program does. **Depth goes up by construction.**
+
+u64-mixer worked because composing two mixers gives higher-entropy
+output — no "cost" axis being summed. Sort-net fails because depth
+*is* the cost axis being summed.
+
+### What this proves and what it doesn't
+
+**Proves:**
+- Architectural successor mechanism is *domain-transferable* (it
+  compiled into sort_net cleanly, SA selects it, programs use it).
+- Empirical effectiveness of macro-composition is **NOT
+  domain-independent**. It depends on whether the progress axis is
+  invariant (or improved) under composition.
+- For domains with additive cost axes (depth, latency, gate count,
+  memory), naïve macro-composition is structurally counterproductive.
+
+**Does not prove:**
+- That the chain pattern is wrong for sort_net in general — just that
+  *full-network macro composition* is. A layer-aware composition
+  primitive could in principle reduce depth.
+- That sort_net depth is unreachable for the chain — gen-0 alone
+  occasionally finds depth-7. The base substrate has the capacity;
+  the chain's macro primitive steers away from it.
+
+### Negative result framed as research finding
+
+**Macro-composition primitives are aligned with the progress axis only
+when the axis is invariant (or improved) under composition. For
+additive-cost domains, sub-structure composition is required.**
+
+This is the kind of statement we couldn't make before running the
+experiment. It points directly at the next architecture: a
+`layer_extract(prior, n)` primitive for sort_net that lets gen_n+1
+splice individual parallel layers from prior champions instead of
+their full sequences. That's research-grade work, not a one-session
+edit, but the path is now well-specified.
+
+### Files
+
+- `src/adapters/domain_sort_net.zig` — additive CALL_LIB additions
+- `src/adapters/chain_runner_sort.zig` — full sort-net chain runner
+- `results/chain_sort_variance/seed_noise_gen0.txt` — noise baseline
+- `results/chain_sort_variance/v4_multiseed_*.txt` — 5-seed chain runs
+- `results/chain_sort_variance/v4_iter200k.txt` — high-budget control
+- `results/chain_sort/gen_{0,1}_champion.csv` — actual programs

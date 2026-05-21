@@ -1,0 +1,10 @@
+generations=5 iters_per_gen=50000 root_seed=0x5555555555555555 novelty_lambda=5.00 depth_weight=10.00
+--- generation 0 | seed=0xF9D9BAE2168F6194 | iters=50000 | chain_extras_len=0 ---
+champion: correctness=1.000000 size=22 depth=8
+verdict: ADVANCE
+--- generation 1 | seed=0x9F31373B5441258D | iters=50000 | chain_extras_len=1 ---
+champion: correctness=1.000000 size=16 depth=13
+verdict: HALT(no_quality_improvement)
+HALTED at generation 1: HALT(no_quality_improvement)
+STRICT_DOMINATION ever observed: NO
+Per-generation log: results/chain_sort/chain_log.csv

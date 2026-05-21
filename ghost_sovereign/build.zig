@@ -530,6 +530,14 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(chain_runner);
 
+    const chain_runner_sort = b.addExecutable(.{
+        .name = "chain_runner_sort",
+        .root_source_file = b.path("src/adapters/chain_runner_sort.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(chain_runner_sort);
+
     const search_strategy_meta = b.addExecutable(.{
         .name = "search_strategy_meta",
         .root_source_file = b.path("src/adapters/search_strategy_meta.zig"),

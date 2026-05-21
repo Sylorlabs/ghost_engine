@@ -16,7 +16,26 @@ const NFact: usize = 40320;
 const MaxLen: usize = 32;
 const MaxConcatLen: usize = MaxLen * 4;
 
-const Comparator = struct { i: u3, j: u3 };
+// Comparator is either a normal compare-exchange (kind=0) on wires (i,j),
+// or (kind=1) a "call prior champion" macro that executes
+// chain_extras[i % chain_extras.len] inline. When chain_extras is empty
+// (the default for general_inventor), kind=1 comparators are never
+// emitted and are a sort-network no-op if encountered — substrate stays
+// byte-identical to pre-chain behavior.
+const Comparator = struct { i: u3, j: u3, kind: u2 = 0 };
+
+pub const MaxChainExtras: usize = 16;
+pub var chain_extras: std.BoundedArray(Program, MaxChainExtras) = .{ .buffer = undefined, .len = 0 };
+
+pub fn chainExtrasReset() void { chain_extras.len = 0; }
+pub fn chainExtrasAppend(p: Program) !void { try chain_extras.append(p); }
+pub fn chainExtrasLen() usize { return chain_extras.len; }
+
+// Recursion bound — without this, a champion that uses CALL_LIB(k)
+// referencing another champion that uses CALL_LIB(j) could blow the
+// stack on deeper chains.
+const MaxCallLibDepth: u32 = 8;
+threadlocal var call_lib_depth: u32 = 0;
 
 pub const Program = struct {
     comps: [MaxLen]Comparator,
@@ -27,6 +46,16 @@ pub const Program = struct {
         var i: usize = 0;
         while (i < self.used) : (i += 1) {
             const c = self.comps[i];
+            if (c.kind == 1) {
+                // CALL_LIB macro: execute prior champion inline.
+                if (chain_extras.len == 0) continue; // no-op fallback
+                if (call_lib_depth >= MaxCallLibDepth) continue;
+                call_lib_depth += 1;
+                defer call_lib_depth -= 1;
+                const idx: usize = @intCast(@as(usize, c.i) % chain_extras.len);
+                a = chain_extras.buffer[idx].sort(a);
+                continue;
+            }
             if (a[c.i] > a[c.j]) {
                 const tmp = a[c.i]; a[c.i] = a[c.j]; a[c.j] = tmp;
             }
@@ -95,11 +124,36 @@ fn depth(net: Program) u8 {
     var k: usize = 0;
     while (k < net.used) : (k += 1) {
         const c = net.comps[k];
+        if (c.kind == 1) {
+            // Macro: add prior champion's depth to all wires it touches
+            // (which is all of them, since sort networks operate on all
+            // wires). Conservative — assumes macro saturates the layer.
+            if (chain_extras.len == 0) continue;
+            const idx: usize = @intCast(@as(usize, c.i) % chain_extras.len);
+            const sub_depth = depth(chain_extras.buffer[idx]);
+            var w: usize = 0;
+            var max_wire: u8 = 0;
+            while (w < N) : (w += 1) if (wire_layer[w] > max_wire) { max_wire = wire_layer[w]; };
+            const new_layer: u8 = max_wire + sub_depth;
+            w = 0;
+            while (w < N) : (w += 1) wire_layer[w] = new_layer;
+            if (new_layer > max_d) max_d = new_layer;
+            continue;
+        }
         const nl: u8 = @intCast(@max(wire_layer[c.i], wire_layer[c.j]) + 1);
         wire_layer[c.i] = nl; wire_layer[c.j] = nl;
         if (nl > max_d) max_d = nl;
     }
     return max_d;
+}
+
+// Exposed for chain_runner_sort progress-axis measurement.
+pub fn programDepth(p: Program) u8 {
+    return depth(p);
+}
+
+pub fn programSize(p: Program) u8 {
+    return p.used;
 }
 
 pub const Quality = struct {
@@ -171,7 +225,7 @@ pub const DistanceResult = struct {
     correctness: f64,
 };
 
-fn cmpEq(a: Comparator, b: Comparator) bool { return a.i == b.i and a.j == b.j; }
+fn cmpEq(a: Comparator, b: Comparator) bool { return a.kind == b.kind and a.i == b.i and a.j == b.j; }
 
 fn editDistance(a: []const Comparator, b: []const Comparator, allocator: std.mem.Allocator) !usize {
     const la = a.len; const lb = b.len;
@@ -270,6 +324,19 @@ pub fn isReachable(r: ReachabilityResult) bool { return r.reachable; }
 
 // --- Random / mutate / crossover ---
 fn randomComparator(rng: *u64) Comparator {
+    // With chain_extras populated, ~1/(NumComps+chain_extras.len) chance
+    // of emitting a CALL_LIB-style macro comparator. This makes priors
+    // composable atoms in mutate/random just like CALL_LIB in u64-mixer.
+    if (chain_extras.len > 0) {
+        rng.* = engine.smix(rng.*);
+        const NumComps: u64 = (N * (N - 1)) / 2; // 28
+        const total: u64 = NumComps + chain_extras.len;
+        const draw: u64 = rng.* % total;
+        if (draw >= NumComps) {
+            const lib_idx: u3 = @intCast((draw - NumComps) % chain_extras.len);
+            return .{ .i = lib_idx, .j = 0, .kind = 1 };
+        }
+    }
     rng.* = engine.smix(rng.*);
     const NumComps: u64 = (N * (N - 1)) / 2;
     var k: u64 = rng.* % NumComps;
@@ -278,7 +345,7 @@ fn randomComparator(rng: *u64) Comparator {
         const row_len: u64 = (N - 1) - @as(u64, ci);
         if (k < row_len) {
             const cj: u3 = @intCast(@as(u64, ci) + 1 + k);
-            return .{ .i = ci, .j = cj };
+            return .{ .i = ci, .j = cj, .kind = 0 };
         }
         k -= row_len;
     }
@@ -342,7 +409,9 @@ pub fn printProgram(p: Program, writer: anytype) !void {
 }
 
 pub fn programToCsv(p: Program, writer: anytype) !void {
-    try writer.writeAll("idx,i,j,size\n");
+    try writer.writeAll("idx,kind,i,j,size\n");
     var i: usize = 0;
-    while (i < p.used) : (i += 1) try writer.print("{d},{d},{d},{d}\n", .{ i, p.comps[i].i, p.comps[i].j, p.used });
+    while (i < p.used) : (i += 1) try writer.print("{d},{d},{d},{d},{d}\n", .{
+        i, p.comps[i].kind, p.comps[i].i, p.comps[i].j, p.used,
+    });
 }
