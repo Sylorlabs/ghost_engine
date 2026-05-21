@@ -1,0 +1,4 @@
+idx,op_id,op_name,src1,src2,size,truth_table_hex
+0,2,XOR,0,3,3,0x6996
+1,2,XOR,4,1,3,0x6996
+2,2,XOR,5,2,3,0x6996

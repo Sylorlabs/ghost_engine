@@ -474,6 +474,78 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(program_synthesis_inventor);
 
+    const program_synthesis_v3 = b.addExecutable(.{
+        .name = "program_synthesis_v3",
+        .root_source_file = b.path("src/adapters/program_synthesis_v3.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(program_synthesis_v3);
+
+    const reachability_tester = b.addExecutable(.{
+        .name = "reachability_tester",
+        .root_source_file = b.path("src/adapters/reachability_tester.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(reachability_tester);
+
+    const champion_pairwise = b.addExecutable(.{
+        .name = "champion_pairwise",
+        .root_source_file = b.path("src/adapters/champion_pairwise.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(champion_pairwise);
+
+    const sorting_inventor = b.addExecutable(.{
+        .name = "sorting_inventor",
+        .root_source_file = b.path("src/adapters/sorting_inventor.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(sorting_inventor);
+
+    const sorting_reachability_tester = b.addExecutable(.{
+        .name = "sorting_reachability_tester",
+        .root_source_file = b.path("src/adapters/sorting_reachability_tester.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(sorting_reachability_tester);
+
+    const general_inventor = b.addExecutable(.{
+        .name = "general_inventor",
+        .root_source_file = b.path("src/adapters/general_inventor.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(general_inventor);
+
+    const chain_runner = b.addExecutable(.{
+        .name = "chain_runner",
+        .root_source_file = b.path("src/adapters/chain_runner.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(chain_runner);
+
+    const search_strategy_meta = b.addExecutable(.{
+        .name = "search_strategy_meta",
+        .root_source_file = b.path("src/adapters/search_strategy_meta.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(search_strategy_meta);
+
+    const recursive_engine_loop = b.addExecutable(.{
+        .name = "recursive_engine_loop",
+        .root_source_file = b.path("src/adapters/recursive_engine_loop.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(recursive_engine_loop);
+
     const trained_semantic_bench = b.addExecutable(.{
         .name = "trained_semantic_bench",
         .root_source_file = b.path("src/adapters/trained_semantic_bench.zig"),
@@ -481,6 +553,15 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     b.installArtifact(trained_semantic_bench);
+
+    const semantic_structure_probe = b.addExecutable(.{
+        .name = "semantic_structure_probe",
+        .root_source_file = b.path("src/adapters/semantic_structure_probe.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    addGhostImports(semantic_structure_probe.root_module, modules);
+    b.installArtifact(semantic_structure_probe);
 
     const train_hypervectors = b.addExecutable(.{
         .name = "train_hypervectors",

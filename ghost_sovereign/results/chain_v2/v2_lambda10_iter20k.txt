@@ -1,0 +1,18 @@
+=== INVENTION CHAIN RUNNER | domain=u64-mixer ===
+generations=5 iters_per_gen=20000 root_seed=0xABCDEF0123456789 novelty_lambda=10.00
+
+--- generation 0 | seed=0xD0B1A3CD38F42F40 | iters=20000 | extended_library_size=4 | chain_extras_len=0 ---
+search done. quality_score=47.844 fitness=47.844 accepted=9428/20000
+base: closest=xorshift norm_edit=1.000 bit_agreement=0.502 reach_bits=0.505
+extras: closest=<none> bit_agreement=0.000 reach_bits=0.000 (depth=3)
+quality_gate: PASS
+verdict: ADVANCE
+
+--- generation 1 | seed=0x8ECA156F0EA8E54B | iters=20000 | extended_library_size=5 | chain_extras_len=1 ---
+search done. quality_score=47.922 fitness=47.922 accepted=10391/20000
+base: closest=xorshift norm_edit=1.000 bit_agreement=0.501 reach_bits=0.505
+extras: closest=champion_gen_0 bit_agreement=0.500 reach_bits=0.500 (depth=3)
+quality_gate: PASS
+verdict: ADVANCE
+
+--- generation 2 | seed=0xC3BBFE526CA3DF3C | iters=20000 | extended_library_size=6 | chain_extras_len=2 ---

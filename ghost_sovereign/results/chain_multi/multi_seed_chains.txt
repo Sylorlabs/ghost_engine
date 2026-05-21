@@ -1,0 +1,62 @@
+===== root_seed=DEADBEEFCAFEBABE =====
+generations=5 iters_per_gen=8000 root_seed=0xDEADBEEFCAFEBABE
+--- generation 0 | seed=0x8226E05816FDACF9 | iters=8000 | extended_library_size=4 ---
+search done. best_score=47.990 accepted=2635/8000
+verdict: ADVANCE
+--- generation 1 | seed=0x48EF53523607E58F | iters=8000 | extended_library_size=5 ---
+search done. best_score=47.344 accepted=2608/8000
+verdict: HALT(no_quality_improvement)
+HALTED at generation 1: HALT(no_quality_improvement)
+Per-generation log: results/chain/chain_log.csv
+===== root_seed=0123456789ABCDEF =====
+generations=5 iters_per_gen=8000 root_seed=0x123456789ABCDEF
+--- generation 0 | seed=0xEAFE49A97E28F46 | iters=8000 | extended_library_size=4 ---
+search done. best_score=47.854 accepted=3546/8000
+verdict: ADVANCE
+--- generation 1 | seed=0xC79A5C08CFBB786F | iters=8000 | extended_library_size=5 ---
+search done. best_score=47.888 accepted=2998/8000
+verdict: ADVANCE
+--- generation 2 | seed=0x7F5515D9D90CA3A4 | iters=8000 | extended_library_size=6 ---
+search done. best_score=47.854 accepted=2694/8000
+verdict: HALT(no_quality_improvement)
+HALTED at generation 2: HALT(no_quality_improvement)
+Per-generation log: results/chain/chain_log.csv
+===== root_seed=FEDCBA9876543210 =====
+generations=5 iters_per_gen=8000 root_seed=0xFEDCBA9876543210
+--- generation 0 | seed=0x19DDA3FF51DB1B7A | iters=8000 | extended_library_size=4 ---
+search done. best_score=47.714 accepted=2684/8000
+verdict: ADVANCE
+--- generation 1 | seed=0xAF6DB6379E395BA4 | iters=8000 | extended_library_size=5 ---
+search done. best_score=47.841 accepted=2727/8000
+verdict: ADVANCE
+--- generation 2 | seed=0xCB0B205B6F37A5C8 | iters=8000 | extended_library_size=6 ---
+search done. best_score=47.929 accepted=3273/8000
+verdict: ADVANCE
+--- generation 3 | seed=0x143B6761D257A718 | iters=8000 | extended_library_size=7 ---
+search done. best_score=46.800 accepted=2618/8000
+verdict: HALT(no_quality_improvement)
+HALTED at generation 3: HALT(no_quality_improvement)
+Per-generation log: results/chain/chain_log.csv
+===== root_seed=1A2B3C4D5E6F7081 =====
+generations=5 iters_per_gen=8000 root_seed=0x1A2B3C4D5E6F7081
+--- generation 0 | seed=0xFAAFB3E8AC7B65C0 | iters=8000 | extended_library_size=4 ---
+search done. best_score=47.912 accepted=2991/8000
+verdict: ADVANCE
+--- generation 1 | seed=0x4E96304C7DBC8B59 | iters=8000 | extended_library_size=5 ---
+search done. best_score=47.978 accepted=3511/8000
+verdict: ADVANCE
+--- generation 2 | seed=0x66B709471FFA6330 | iters=8000 | extended_library_size=6 ---
+search done. best_score=47.854 accepted=2861/8000
+verdict: HALT(no_quality_improvement)
+HALTED at generation 2: HALT(no_quality_improvement)
+Per-generation log: results/chain/chain_log.csv
+===== root_seed=BADCAFEFEEDFACE0 =====
+generations=5 iters_per_gen=8000 root_seed=0xBADCAFEFEEDFACE0
+--- generation 0 | seed=0xE0938E8B1F5B5BCF | iters=8000 | extended_library_size=4 ---
+search done. best_score=47.910 accepted=3106/8000
+verdict: ADVANCE
+--- generation 1 | seed=0xCCC74A9E84657F4D | iters=8000 | extended_library_size=5 ---
+search done. best_score=47.319 accepted=2601/8000
+verdict: HALT(no_quality_improvement)
+HALTED at generation 1: HALT(no_quality_improvement)
+Per-generation log: results/chain/chain_log.csv

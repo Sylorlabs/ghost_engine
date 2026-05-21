@@ -1,0 +1,30 @@
+=== seed 1111111111111111 ===
+search done. best_score=47.937 accepted=2716/8000
+verdict: ADVANCE
+=== seed 2222222222222222 ===
+search done. best_score=47.873 accepted=2763/8000
+verdict: ADVANCE
+=== seed 3333333333333333 ===
+search done. best_score=47.878 accepted=2997/8000
+verdict: ADVANCE
+=== seed 4444444444444444 ===
+search done. best_score=47.856 accepted=2816/8000
+verdict: ADVANCE
+=== seed 5555555555555555 ===
+search done. best_score=47.888 accepted=2550/8000
+verdict: ADVANCE
+=== seed 6666666666666666 ===
+search done. best_score=47.322 accepted=2694/8000
+verdict: ADVANCE
+=== seed 7777777777777777 ===
+search done. best_score=47.410 accepted=2729/8000
+verdict: ADVANCE
+=== seed 8888888888888888 ===
+search done. best_score=47.766 accepted=3485/8000
+verdict: ADVANCE
+=== seed 9999999999999999 ===
+search done. best_score=47.927 accepted=3095/8000
+verdict: ADVANCE
+=== seed AAAAAAAAAAAAAAAA ===
+search done. best_score=46.868 accepted=2760/8000
+verdict: ADVANCE
