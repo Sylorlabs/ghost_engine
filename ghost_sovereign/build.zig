@@ -538,6 +538,22 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(chain_runner_sort);
 
+    const meta_engine_runner = b.addExecutable(.{
+        .name = "meta_engine_runner",
+        .root_source_file = b.path("src/adapters/meta_engine_runner.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(meta_engine_runner);
+
+    const meta_engine_baseline = b.addExecutable(.{
+        .name = "meta_engine_baseline",
+        .root_source_file = b.path("src/adapters/meta_engine_baseline.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(meta_engine_baseline);
+
     const search_strategy_meta = b.addExecutable(.{
         .name = "search_strategy_meta",
         .root_source_file = b.path("src/adapters/search_strategy_meta.zig"),
