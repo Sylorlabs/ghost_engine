@@ -1,0 +1,101 @@
+meta-engine outer search: outer_iters=300 inner_steps=400 eval_seeds=5 seed=0x88888888AABBCCDD
+init pool=32: fitness=174.8000 anchor=170.5547 used=14
+  iter 0: cand=176.400 best(epoch)=168.944 ACCEPTED+ANCHOR
+  iter 9: cand=174.269 best(epoch)=173.863 ACCEPTED
+  iter 12: cand=168.213 best(epoch)=134.625 ACCEPTED
+  iter 14: cand=168.319 best(epoch)=155.863 ACCEPTED
+  iter 19: cand=173.913 best(epoch)=152.325 ACCEPTED
+  iter 25: cand=109.225 best(epoch)=163.769 rejected
+  iter 26: cand=175.400 best(epoch)=167.719 ACCEPTED
+  iter 29: cand=176.744 best(epoch)=171.794 ACCEPTED
+  iter 32: cand=174.625 best(epoch)=172.600 ACCEPTED+ANCHOR
+  iter 38: cand=177.400 best(epoch)=168.913 ACCEPTED
+  iter 41: cand=177.000 best(epoch)=156.256 ACCEPTED+ANCHOR
+  iter 48: cand=178.100 best(epoch)=177.519 ACCEPTED
+  iter 50: cand=176.400 best(epoch)=176.400 rejected
+  iter 52: cand=176.800 best(epoch)=160.188 ACCEPTED
+  iter 54: cand=177.300 best(epoch)=177.100 ACCEPTED
+  iter 55: cand=176.306 best(epoch)=169.694 ACCEPTED
+  iter 62: cand=175.694 best(epoch)=163.900 ACCEPTED
+  iter 64: cand=175.563 best(epoch)=158.813 ACCEPTED
+  iter 67: cand=175.400 best(epoch)=161.369 ACCEPTED
+  iter 74: cand=175.744 best(epoch)=175.200 ACCEPTED
+  iter 75: cand=154.269 best(epoch)=171.919 rejected
+  iter 78: cand=175.300 best(epoch)=174.600 ACCEPTED
+  iter 83: cand=173.900 best(epoch)=170.969 ACCEPTED
+  iter 88: cand=168.881 best(epoch)=163.588 ACCEPTED
+  iter 92: cand=172.644 best(epoch)=172.200 ACCEPTED
+  iter 93: cand=175.200 best(epoch)=171.400 ACCEPTED
+  iter 95: cand=172.644 best(epoch)=170.488 ACCEPTED
+  iter 96: cand=163.025 best(epoch)=157.950 ACCEPTED
+  iter 100: cand=148.106 best(epoch)=177.031 rejected
+  iter 102: cand=171.856 best(epoch)=169.069 ACCEPTED
+  iter 109: cand=175.300 best(epoch)=174.344 ACCEPTED
+  iter 111: cand=177.500 best(epoch)=175.663 ACCEPTED
+  iter 114: cand=175.500 best(epoch)=169.006 ACCEPTED
+  iter 115: cand=174.600 best(epoch)=147.444 ACCEPTED
+  iter 119: cand=174.788 best(epoch)=171.763 ACCEPTED
+  iter 121: cand=173.075 best(epoch)=172.988 ACCEPTED
+  iter 124: cand=174.106 best(epoch)=173.763 ACCEPTED
+  iter 125: cand=174.344 best(epoch)=174.344 rejected
+  iter 133: cand=174.300 best(epoch)=169.706 ACCEPTED
+  iter 136: cand=173.850 best(epoch)=173.500 ACCEPTED
+  iter 150: cand=175.788 best(epoch)=175.788 rejected
+  iter 172: cand=173.694 best(epoch)=172.819 ACCEPTED
+  iter 175: cand=-18.619 best(epoch)=174.731 rejected
+  iter 177: cand=173.500 best(epoch)=165.088 ACCEPTED
+  iter 178: cand=172.900 best(epoch)=170.331 ACCEPTED
+  iter 181: cand=173.919 best(epoch)=172.988 ACCEPTED
+  iter 182: cand=172.600 best(epoch)=129.413 ACCEPTED
+  iter 187: cand=173.569 best(epoch)=171.794 ACCEPTED
+  iter 190: cand=173.706 best(epoch)=172.025 ACCEPTED
+  iter 191: cand=175.300 best(epoch)=164.875 ACCEPTED
+  iter 192: cand=175.963 best(epoch)=174.288 ACCEPTED
+  iter 193: cand=155.919 best(epoch)=150.619 ACCEPTED
+  iter 200: cand=162.831 best(epoch)=162.831 rejected
+  iter 204: cand=176.400 best(epoch)=152.538 ACCEPTED
+  iter 205: cand=175.431 best(epoch)=175.300 ACCEPTED
+  iter 208: cand=174.688 best(epoch)=155.119 ACCEPTED
+  iter 210: cand=177.000 best(epoch)=174.781 ACCEPTED
+  iter 211: cand=165.863 best(epoch)=144.125 ACCEPTED
+  iter 214: cand=175.038 best(epoch)=162.781 ACCEPTED
+  iter 218: cand=176.600 best(epoch)=168.881 ACCEPTED
+  iter 220: cand=176.088 best(epoch)=174.381 ACCEPTED
+  iter 225: cand=174.281 best(epoch)=157.550 ACCEPTED+ANCHOR
+  iter 229: cand=172.006 best(epoch)=171.238 ACCEPTED
+  iter 231: cand=175.600 best(epoch)=165.781 ACCEPTED
+  iter 236: cand=168.263 best(epoch)=156.731 ACCEPTED
+  iter 240: cand=176.300 best(epoch)=172.481 ACCEPTED
+  iter 241: cand=173.338 best(epoch)=158.106 ACCEPTED
+  iter 243: cand=170.581 best(epoch)=162.113 ACCEPTED
+  iter 250: cand=146.269 best(epoch)=159.619 rejected
+  iter 253: cand=171.563 best(epoch)=160.025 ACCEPTED
+  iter 255: cand=177.900 best(epoch)=177.163 ACCEPTED
+  iter 256: cand=168.156 best(epoch)=159.206 ACCEPTED
+  iter 271: cand=176.400 best(epoch)=152.338 ACCEPTED
+  iter 275: cand=162.719 best(epoch)=166.938 rejected
+  iter 288: cand=171.025 best(epoch)=169.525 ACCEPTED
+  iter 294: cand=177.800 best(epoch)=177.000 ACCEPTED
+  iter 298: cand=174.725 best(epoch)=168.063 ACCEPTED
+
+rejected_by_holdout=0 rejected_by_catastrophe=0
+
+final: best_fit=174.7250 accepted=67/300 best_ever_anchor=177.2422
+
+best meta-program (anchor-protected, 13 ops):
+  [0] ACCEPT_SA dst=r3 src1=r3 src2=r3
+  [1] ACCEPT_SA dst=r3 src1=r2 src2=r0
+  [2] ACCEPT_SA dst=r0 src1=r2 src2=r1
+  [3] REG_XOR dst=r0 src1=r3 src2=r3
+  [4] EVAL_CUR dst=r1 src1=r1 src2=r1
+  [5] RAND_REG dst=r2 src1=r2 src2=r0
+  [6] MUTATE_BEST_TO_CUR dst=r3 src1=r0 src2=r1
+  [7] MUTATE_CUR dst=r2 src1=r2 src2=r1
+  [8] CROSS_BEST_CUR dst=r3 src1=r2 src2=r0
+  [9] MUTATE_BEST_TO_CUR dst=r1 src1=r1 src2=r0
+  [10] EVAL_CUR dst=r1 src1=r1 src2=r3
+  [11] REG_SHR dst=r2 src1=r0 src2=r1
+  [12] EVAL_CUR dst=r2 src1=r1 src2=r0
+
+VALIDATION on 20 held-out seeds: mean=159.4031 min=22.5313 max=178.0000
+wrote results/meta_engine_sort_repro/r3/outer_log.csv and results/meta_engine_sort_repro/r3/best_meta.csv

@@ -307,17 +307,49 @@ hill-climb on sort-net at constrained budgets. This is a real
 algorithmic insight — not a hand-designed heuristic — emerged from
 the engine-inventing-engine search.
 
+## Sort-net reproducibility (4 additional seeds — CORRECTION)
+
+The +5.54 sort-net result above was a single run; a follow-up 4-seed
+reproducibility test was run to verify. Results:
+
+| seed | anchor | held-out mean | held-out min | held-out max | beats hill-climb 166.05? |
+| ---- | ------ | ------------- | ------------ | ------------ | ------------------------ |
+| run1 | 175.90 | 171.59        | 133.25       | 180.00       | ✓ +5.54                  |
+| r0   | 176.29 | 156.68        |  41.06       | 178.50       | ✗ -9.37                  |
+| r1   | 177.35 | **176.76**    | 166.69       | 179.50       | ✓ +10.71                 |
+| r2   | 175.75 | 161.40        |  59.09       | 177.50       | ✗ -4.65                  |
+| r3   | 177.24 | 159.40        |  22.53       | 178.00       | ✗ -6.65                  |
+
+**2 of 5 (40%) beat hill-climb on held-out mean**; **median across
+5 runs: 161.40** — slightly below hill-climb 166.05. **All 5 scored
+175–177 on the 8-seed anchor** but held-out spread is wide. The
+anchor set is too small / too similar to rotation pool — there's
+residual overfit.
+
+**Revised cross-domain claim**: engine-inventing-engine on sort_net
+produces engines **competitive with** (not consistently beating)
+hand-coded hill-climb. Architecture works cross-domain; reliability
+needs more anchor diversity to be claimed as a beat-baseline result.
+
+The original "+5.54 strong win" framing in the cross-domain section
+above was based on a single lucky run. This correction supersedes
+it — the honest read is "competitive median, occasional wins."
+
 ## Cross-domain summary
 
 | domain    | hand-coded hill-climb | discovered engine | margin |
 | --------- | --------------------- | ----------------- | ------ |
 | u64-mixer (inner_steps=400) | -519 (crashes)       | 36.18 (v2)        | +555   |
 | u64-mixer (inner_steps=1000)| 47.07                | 47.29             | +0.22  |
-| sort_net  (inner_steps=400) | 166.05               | **171.59**        | **+5.54**  |
+| sort_net (inner_steps=400, n=5 seeds, MEDIAN) | 166.05    | 161.40     | -4.65 (median) |
+| sort_net (inner_steps=400, BEST of 5 seeds)   | 166.05    | 176.76     | +10.71 (best)  |
 
 Engine-inventing-engine demonstrated across two structurally
-distinct domains. Wins decisively at low budgets; on sort_net the
-win persists even at the budget where it was searched.
+distinct domains. Decisive wins at low u64-mixer budgets; on
+sort_net, the median discovered engine is slightly below hill-climb
+but the best is +10.7 — high variance across seeds. The substrate
+is working; reliable cross-domain dominance requires more anchor
+diversity than the current 8-seed anchor provides.
 
 ## Next steps (in priority order)
 
