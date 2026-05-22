@@ -626,6 +626,22 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(mmmm_holdout_hillclimb);
 
+    const bittape_inventor = b.addExecutable(.{
+        .name = "bittape_inventor",
+        .root_source_file = b.path("src/adapters/bittape_inventor.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(bittape_inventor);
+
+    const bittape_inspect = b.addExecutable(.{
+        .name = "bittape_inspect",
+        .root_source_file = b.path("src/adapters/bittape_inspect.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(bittape_inspect);
+
     const champion_holdout_validation = b.addExecutable(.{
         .name = "champion_holdout_validation",
         .root_source_file = b.path("src/adapters/champion_holdout_validation.zig"),
