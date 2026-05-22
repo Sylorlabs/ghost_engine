@@ -1,0 +1,91 @@
+=== TIER-1 CHAIN RUNNER ===
+generations=6 tier1_iters=24 mm_outer_iters=12 tier0_inner_steps=150 root_seed=0x1111222233334444 wide_call_meta=false monotone_retries=10
+
+--- generation 0 | chain_extras_len=0 | best_so_far=-inf ---
+  spawning 10 parallel attempts...
+  attempt 1/10 seed=0xCA251ADFDD5F1A71 anchor=45.3903 holdout=-2774.2247
+  attempt 2/10 seed=0xFA723BBDB686D1F anchor=46.8001 holdout=-55.8322
+  attempt 3/10 seed=0x145DF0957C625934 anchor=-166.9236 holdout=-1397.0192
+  attempt 4/10 seed=0x7E78DDA8FADDCD1A anchor=-64.3962 holdout=-1359.5687
+  attempt 5/10 seed=0xC2163DE7A656E218 anchor=46.0462 holdout=-3999.1853
+  attempt 6/10 seed=0x4D48DC9EE4BF8916 anchor=-23.8108 holdout=45.1350
+  attempt 7/10 seed=0x73B788BF5366896D anchor=44.8784 holdout=-95.8785
+  attempt 8/10 seed=0xCE4B5F1DC9A23827 anchor=-252785.7549 holdout=-10764.6875
+  attempt 9/10 seed=0xA5420E2E248193D8 anchor=45.3903 holdout=-2774.2247
+  attempt 10/10 seed=0xB8417E9579F7637B anchor=46.4301 holdout=2.2052
+gen 0 summary: ADVANCE + STRICT_PROGRESS  (best_attempt_holdout=45.1350  best_so_far=-inf  attempts_run=10)
+
+--- generation 1 | chain_extras_len=1 | best_so_far=45.1350 ---
+  spawning 10 parallel attempts...
+  attempt 1/10 seed=0x6307703464412B6B anchor=47.6617 holdout=-1354.7608
+  attempt 2/10 seed=0xF43A5C01AC2BD5D8 anchor=-38.2607 holdout=22.8301
+  attempt 3/10 seed=0xCD6BA66D6C8666FE anchor=47.6796 holdout=-1317.0943
+  attempt 4/10 seed=0x8BBEE92FD03480F0 anchor=47.7717 holdout=-1337.3840
+  attempt 5/10 seed=0x5CE3049B7EE3692B anchor=47.7427 holdout=-26.3796
+  attempt 6/10 seed=0x45080CE2D7571842 anchor=47.6533 holdout=-1337.3840
+  attempt 7/10 seed=0x836B604D0F800538 anchor=47.7504 holdout=19.6345
+  attempt 8/10 seed=0x5F82BD435614A3AD anchor=47.7739 holdout=-1317.0943
+  attempt 9/10 seed=0xBE5EE7AE563B7917 anchor=47.7311 holdout=-1337.3840
+  attempt 10/10 seed=0xE1C0D193073359A0 anchor=47.7235 holdout=45.1350
+gen 1 summary: SOFT_HALT(retries_exhausted_but_continuing)  (best_attempt_holdout=45.1350  best_so_far=45.1350  attempts_run=10)
+
+--- generation 2 | chain_extras_len=1 | best_so_far=45.1350 ---
+  spawning 10 parallel attempts...
+  attempt 1/10 seed=0x610ADE9AE44B7D1B anchor=47.7388 holdout=19.6345
+  attempt 2/10 seed=0x87C77580622A2E5B anchor=12.5565 holdout=45.1350
+  attempt 3/10 seed=0xB33FE0C7CC6E77E6 anchor=47.8322 holdout=21.5586
+  attempt 4/10 seed=0x6D36F2E035B941CF anchor=47.7511 holdout=45.1350
+  attempt 5/10 seed=0xF37C0D860A06D7A2 anchor=47.7321 holdout=-1299.9600
+  attempt 6/10 seed=0xA8A25B5193F71072 anchor=47.6899 holdout=-1299.9600
+  attempt 7/10 seed=0xF9CE284A2F796DF7 anchor=47.7241 holdout=45.1350
+  attempt 8/10 seed=0xD2D2DA079170EDC0 anchor=45.8169 holdout=-34.8772
+  attempt 9/10 seed=0x3179E2C172F3E830 anchor=31.4912 holdout=29.6961
+  attempt 10/10 seed=0x779995CBD18944E anchor=45.3081 holdout=39.6141
+gen 2 summary: SOFT_HALT(retries_exhausted_but_continuing)  (best_attempt_holdout=45.1350  best_so_far=45.1350  attempts_run=10)
+
+--- generation 3 | chain_extras_len=1 | best_so_far=45.1350 ---
+  spawning 10 parallel attempts...
+  attempt 1/10 seed=0x4C6702BD18D4996F anchor=47.6417 holdout=45.1350
+  attempt 2/10 seed=0xA429C103E731F802 anchor=-0.8250 holdout=-1337.3840
+  attempt 3/10 seed=0xE04EE8491A1FA8E2 anchor=47.8462 holdout=-1317.0943
+  attempt 4/10 seed=0x9B7234E64844C1C1 anchor=47.7150 holdout=-1317.0943
+  attempt 5/10 seed=0xDAF4462B6E95CA03 anchor=47.6533 holdout=-1337.3840
+  attempt 6/10 seed=0x5B21D846AE2466E0 anchor=47.7675 holdout=-1317.0943
+  attempt 7/10 seed=0xA6BCDE6B62772B0D anchor=47.1102 holdout=45.1350
+  attempt 8/10 seed=0xF106EA33FDC7DD4A anchor=47.5272 holdout=45.1350
+  attempt 9/10 seed=0xA2C7EF416662CA46 anchor=47.7674 holdout=19.6345
+  attempt 10/10 seed=0x103D646F09C65D1 anchor=45.3807 holdout=-118.2424
+gen 3 summary: SOFT_HALT(retries_exhausted_but_continuing)  (best_attempt_holdout=45.1350  best_so_far=45.1350  attempts_run=10)
+
+--- generation 4 | chain_extras_len=1 | best_so_far=45.1350 ---
+  spawning 10 parallel attempts...
+  attempt 1/10 seed=0xD9F231756CB4B392 anchor=47.7074 holdout=21.5586
+  attempt 2/10 seed=0x4199F2EBB890C8D0 anchor=15.4960 holdout=45.1350
+  attempt 3/10 seed=0x8E244FE0FA38AAFC anchor=47.7235 holdout=-47.4061
+  attempt 4/10 seed=0xF943B5D61BC235C4 anchor=-0.8250 holdout=-1337.3840
+  attempt 5/10 seed=0xF9C4DB3638BEAC8C anchor=47.6991 holdout=21.5586
+  attempt 6/10 seed=0x377C879E587087B8 anchor=-33.6894 holdout=-81.5734
+  attempt 7/10 seed=0x3FA884DAE2F171B0 anchor=47.6417 holdout=45.1350
+  attempt 8/10 seed=0x73182E4964BDE256 anchor=45.8058 holdout=39.0991
+  attempt 9/10 seed=0xE1271F176D3AE6E1 anchor=47.7356 holdout=-1337.3840
+  attempt 10/10 seed=0x4F4CFBE9BF0AB88A anchor=47.8510 holdout=45.1350
+gen 4 summary: SOFT_HALT(retries_exhausted_but_continuing)  (best_attempt_holdout=45.1350  best_so_far=45.1350  attempts_run=10)
+
+--- generation 5 | chain_extras_len=1 | best_so_far=45.1350 ---
+  spawning 10 parallel attempts...
+  attempt 1/10 seed=0xBF2CC48803E28EA9 anchor=47.7909 holdout=21.5586
+  attempt 2/10 seed=0x93B7CFFC3A71907F anchor=42.5798 holdout=-16.0290
+  attempt 3/10 seed=0x875C993A571B5B1 anchor=47.7231 holdout=22.8301
+  attempt 4/10 seed=0xC81C3EA562B6EA0E anchor=47.6724 holdout=22.8301
+  attempt 5/10 seed=0x707EE7BD6D6A5772 anchor=47.4255 holdout=15.1126
+  attempt 6/10 seed=0x10ED6704CEE25B7D anchor=47.6851 holdout=-1317.0943
+  attempt 7/10 seed=0x70142495CB85790A anchor=47.7053 holdout=45.1350
+  attempt 8/10 seed=0x20A09B4D6A6519A3 anchor=47.8590 holdout=21.5586
+  attempt 9/10 seed=0x95E0003097954FFA anchor=47.6881 holdout=22.8301
+  attempt 10/10 seed=0xC09C4689ABE85DD8 anchor=47.5940 holdout=29.6728
+gen 5 summary: SOFT_HALT(retries_exhausted_but_continuing)  (best_attempt_holdout=45.1350  best_so_far=45.1350  attempts_run=10)
+
+=== CHAIN RESULT ===
+Completed 6 generations.
+STRICT_DOMINATION ever observed: YES
+BEST_HOLDOUT_EVER = 45.1350  (at gen 0, attempt 6)

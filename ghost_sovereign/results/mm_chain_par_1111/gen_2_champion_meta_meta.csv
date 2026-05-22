@@ -1,0 +1,5 @@
+idx,op_id,op_name,dst,src1,src2
+0,9,REG_XOR,2,2,3
+1,12,CALL_META,1,1,0
+2,9,REG_XOR,2,2,0
+3,4,EVAL_META_CUR,3,0,2

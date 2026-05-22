@@ -312,8 +312,22 @@ comparison across all tiers.
   Tier-1 look artificially good.
 - **The 44.30 ceiling appears domain-bounded.** Five approaches
   (bigger budget, wide CALL_META, Tier-2, expanded opcodes, combined
-  Tier-2) all failed to break it. Likely path forward: different
-  scoring axis or different domain entirely.
+  Tier-2) all failed to break it. **Update (2026-05-21):** the
+  monotone-retry + parallel-attempts mode finally broke through to
+  **47.16** (F00D sequential, gen 4 via CALL_META compounding). The
+  new escape strategies (richer scoring axis, more tiers) would build
+  on the monotone+parallel foundation.
+
+- **Use `--monotone-retries=N`** to enforce strictly non-decreasing
+  invention output. `N=10` recommended. Each gen runs up to N
+  attempts on N separate threads via std.Thread; the chain only
+  ADVANCEs if at least one attempt strictly beats cumulative-best
+  holdout. Without this flag, the chain can accept worse champions
+  (anchor-mean optimization games the 4 anchor seeds) and produce
+  up-down-up holdout trajectories.
+- **Parallel attempts saturate the CPU.** 10 parallel attempts per
+  gen uses up to 10 cores per chain. Run one chain at a time when
+  using `--monotone-retries=10` on a 12-core machine.
 
 ---
 

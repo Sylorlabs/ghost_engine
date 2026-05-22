@@ -1,0 +1,116 @@
+=== TIER-1 CHAIN RUNNER ===
+generations=5 tier1_iters=24 mm_outer_iters=12 tier0_inner_steps=150 root_seed=0xF00DBEEFCAFEFACE wide_call_meta=false monotone_retries=10
+
+--- generation 0 | chain_extras_len=0 | best_so_far=-inf ---
+  attempt 1/10 seed=0xB3E883177C9E63DF
+  init pool best anchor-mean q=-62.6563
+  iter 15 accepted anchor=1.6897
+  iter 19 accepted anchor=28.4097
+  gen 0: accepted=2/24 anchor_mean=28.4097 holdout=10.5271 mm_evals=200
+  attempt 1 STRICT_PROGRESS: 10.5271 > best-so-far -inf
+gen 0 summary: ADVANCE + STRICT_PROGRESS  (best_attempt_holdout=10.5271  best_so_far=-inf  attempts_run=1)
+
+--- generation 1 | chain_extras_len=1 | best_so_far=10.5271 ---
+  attempt 1/10 seed=0xED50B7CC7F1449A6
+  init pool best anchor-mean q=47.5747
+  iter 8 accepted anchor=47.5813
+  iter 21 accepted anchor=47.5962
+  gen 1: accepted=2/24 anchor_mean=47.5962 holdout=10.5271 mm_evals=188
+  attempt 2/10 seed=0xC7A978F5BF03BDB0
+  init pool best anchor-mean q=10.8484
+  iter 13 accepted anchor=45.4593
+  gen 1: accepted=1/24 anchor_mean=45.4593 holdout=21.3334 mm_evals=200
+  attempt 2 STRICT_PROGRESS: 21.3334 > best-so-far 10.5271
+gen 1 summary: ADVANCE + STRICT_PROGRESS  (best_attempt_holdout=21.3334  best_so_far=10.5271  attempts_run=2)
+
+--- generation 2 | chain_extras_len=2 | best_so_far=21.3334 ---
+  attempt 1/10 seed=0x4A174881FDFF5603
+  init pool best anchor-mean q=47.5959
+  iter 20 accepted anchor=47.5978
+  gen 2: accepted=1/24 anchor_mean=47.5978 holdout=10.5271 mm_evals=192
+  attempt 2/10 seed=0xBECE2583B1DA0306
+  init pool best anchor-mean q=47.5302
+  gen 2: accepted=0/24 anchor_mean=47.5302 holdout=41.7306 mm_evals=196
+  attempt 2 STRICT_PROGRESS: 41.7306 > best-so-far 21.3334
+gen 2 summary: ADVANCE + STRICT_PROGRESS  (best_attempt_holdout=41.7306  best_so_far=21.3334  attempts_run=2)
+
+--- generation 3 | chain_extras_len=3 | best_so_far=41.7306 ---
+  attempt 1/10 seed=0x5A402F1F72D71DE2
+  init pool best anchor-mean q=46.3868
+  gen 3: accepted=0/24 anchor_mean=46.3868 holdout=-34.8772 mm_evals=204
+  attempt 2/10 seed=0x30AE9A4DF5D4586E
+  init pool best anchor-mean q=47.6509
+  iter 9 accepted anchor=47.7061
+  gen 3: accepted=1/24 anchor_mean=47.7061 holdout=21.3334 mm_evals=188
+  attempt 3/10 seed=0xB11B4A98DB35521B
+  init pool best anchor-mean q=-34.2311
+  gen 3: accepted=0/24 anchor_mean=-34.2311 holdout=29.2944 mm_evals=176
+  attempt 4/10 seed=0xD678B11CE364958B
+  init pool best anchor-mean q=46.6469
+  iter 0 accepted anchor=46.7838
+  gen 3: accepted=1/24 anchor_mean=46.7838 holdout=41.7306 mm_evals=196
+  attempt 5/10 seed=0x68E193F33CE1C9D9
+  init pool best anchor-mean q=38.1218
+  iter 9 accepted anchor=41.5498
+  gen 3: accepted=1/24 anchor_mean=41.5498 holdout=-1306.4654 mm_evals=192
+  attempt 6/10 seed=0x27864F3C209A33EA
+  init pool best anchor-mean q=47.6704
+  gen 3: accepted=0/24 anchor_mean=47.6704 holdout=21.3334 mm_evals=192
+  attempt 7/10 seed=0xC72A39138B89D670
+  init pool best anchor-mean q=30.2454
+  iter 1 accepted anchor=43.4099
+  gen 3: accepted=1/24 anchor_mean=43.4099 holdout=26.2586 mm_evals=192
+  attempt 8/10 seed=0xD57C2236150F3A56
+  init pool best anchor-mean q=44.3653
+  iter 6 accepted anchor=45.3159
+  iter 14 accepted anchor=46.9492
+  iter 22 accepted anchor=47.5729
+  gen 3: accepted=3/24 anchor_mean=47.5729 holdout=7.4109 mm_evals=208
+  attempt 9/10 seed=0x8C2AB41C8E9E6955
+  init pool best anchor-mean q=47.6075
+  gen 3: accepted=0/24 anchor_mean=47.6075 holdout=10.5271 mm_evals=188
+  attempt 10/10 seed=0xD7F822FE8925FC
+  init pool best anchor-mean q=45.8057
+  iter 0 accepted anchor=46.1300
+  iter 7 accepted anchor=46.3976
+  iter 17 accepted anchor=47.5040
+  iter 20 accepted anchor=47.6210
+  gen 3: accepted=4/24 anchor_mean=47.6210 holdout=10.5271 mm_evals=212
+gen 3 summary: SOFT_HALT(retries_exhausted_but_continuing)  (best_attempt_holdout=41.7306  best_so_far=41.7306  attempts_run=10)
+
+--- generation 4 | chain_extras_len=3 | best_so_far=41.7306 ---
+  attempt 1/10 seed=0xC97AA19B8DC8E5FA
+  init pool best anchor-mean q=47.5483
+  iter 0 accepted anchor=47.7057
+  gen 4: accepted=1/24 anchor_mean=47.7057 holdout=7.4109 mm_evals=188
+  attempt 2/10 seed=0x146C4DCDF159A12D
+  init pool best anchor-mean q=47.6009
+  iter 3 accepted anchor=47.6423
+  iter 9 accepted anchor=47.8017
+  gen 4: accepted=2/24 anchor_mean=47.8017 holdout=10.5271 mm_evals=208
+  attempt 3/10 seed=0xD3F99EC6AFA7BB46
+  init pool best anchor-mean q=47.6783
+  iter 4 accepted anchor=47.6929
+  iter 17 accepted anchor=47.7181
+  iter 19 accepted anchor=47.7632
+  gen 4: accepted=3/24 anchor_mean=47.7632 holdout=-35.2412 mm_evals=192
+  attempt 4/10 seed=0xB96454E3DDA85782
+  init pool best anchor-mean q=47.6363
+  iter 1 accepted anchor=47.6600
+  gen 4: accepted=1/24 anchor_mean=47.6600 holdout=-1352.0278 mm_evals=200
+  attempt 5/10 seed=0x88003560E880DF76
+  init pool best anchor-mean q=47.7369
+  gen 4: accepted=0/24 anchor_mean=47.7369 holdout=10.5271 mm_evals=192
+  attempt 6/10 seed=0xD341C12075E8090B
+  init pool best anchor-mean q=46.9535
+  iter 2 accepted anchor=47.6210
+  iter 5 accepted anchor=47.6497
+  iter 22 accepted anchor=47.7131
+  gen 4: accepted=3/24 anchor_mean=47.7131 holdout=47.1615 mm_evals=196
+  attempt 6 STRICT_PROGRESS: 47.1615 > best-so-far 41.7306
+gen 4 summary: ADVANCE + STRICT_PROGRESS  (best_attempt_holdout=47.1615  best_so_far=41.7306  attempts_run=6)
+
+=== CHAIN RESULT ===
+Completed 5 generations.
+STRICT_DOMINATION ever observed: YES
+BEST_HOLDOUT_EVER = 47.1615  (at gen 4, attempt 6)
