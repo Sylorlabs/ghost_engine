@@ -594,6 +594,38 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(mmm_chain_runner);
 
+    const mmm_qd_probe = b.addExecutable(.{
+        .name = "mmm_qd_probe",
+        .root_source_file = b.path("src/adapters/mmm_qd_probe.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(mmm_qd_probe);
+
+    const mmm_holdout_hillclimb = b.addExecutable(.{
+        .name = "mmm_holdout_hillclimb",
+        .root_source_file = b.path("src/adapters/mmm_holdout_hillclimb.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(mmm_holdout_hillclimb);
+
+    const mmmm_qd_probe = b.addExecutable(.{
+        .name = "mmmm_qd_probe",
+        .root_source_file = b.path("src/adapters/mmmm_qd_probe.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(mmmm_qd_probe);
+
+    const mmmm_holdout_hillclimb = b.addExecutable(.{
+        .name = "mmmm_holdout_hillclimb",
+        .root_source_file = b.path("src/adapters/mmmm_holdout_hillclimb.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(mmmm_holdout_hillclimb);
+
     const champion_holdout_validation = b.addExecutable(.{
         .name = "champion_holdout_validation",
         .root_source_file = b.path("src/adapters/champion_holdout_validation.zig"),
@@ -601,6 +633,30 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     b.installArtifact(champion_holdout_validation);
+
+    const lineage_audit = b.addExecutable(.{
+        .name = "lineage_audit",
+        .root_source_file = b.path("src/adapters/lineage_audit.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(lineage_audit);
+
+    const meta_mixer_export = b.addExecutable(.{
+        .name = "meta_mixer_export",
+        .root_source_file = b.path("src/adapters/meta_mixer_export.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(meta_mixer_export);
+
+    const mixer_csv_emit = b.addExecutable(.{
+        .name = "mixer_csv_emit",
+        .root_source_file = b.path("src/adapters/mixer_csv_emit.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(mixer_csv_emit);
 
     const search_strategy_meta = b.addExecutable(.{
         .name = "search_strategy_meta",

@@ -524,3 +524,48 @@ pub fn programToCsv(p: Program, writer: anytype) !void {
         });
     }
 }
+
+pub fn programFromCsv(allocator: std.mem.Allocator, path: []const u8) !Program {
+    const file = try std.fs.cwd().openFile(path, .{});
+    defer file.close();
+    const contents = try file.readToEndAlloc(allocator, 1 << 20);
+    defer allocator.free(contents);
+
+    var p = Program{ .instructions = undefined, .used = 0 };
+    var lines = std.mem.tokenizeAny(u8, contents, "\n\r");
+    var first = true;
+    while (lines.next()) |line| {
+        if (first) {
+            first = false;
+            continue;
+        }
+        var fields = std.mem.tokenizeAny(u8, line, ",");
+        _ = fields.next() orelse continue; // idx
+        const op_id_s = fields.next() orelse continue;
+        _ = fields.next() orelse continue; // op_name
+        const dst_s = fields.next() orelse continue;
+        const src1_s = fields.next() orelse continue;
+        const src2_s = fields.next() orelse continue;
+        const imm_s = fields.next() orelse continue;
+        if (p.used >= MaxProgLen) break;
+        const op_id = try std.fmt.parseInt(u8, op_id_s, 10);
+        const dst = try std.fmt.parseInt(u8, dst_s, 10);
+        const src1 = try std.fmt.parseInt(u8, src1_s, 10);
+        const src2 = try std.fmt.parseInt(u8, src2_s, 10);
+        const imm = if (std.mem.startsWith(u8, imm_s, "0x") or std.mem.startsWith(u8, imm_s, "0X"))
+            try std.fmt.parseInt(u64, imm_s[2..], 16)
+        else
+            try std.fmt.parseInt(u64, imm_s, 10);
+        p.instructions[p.used] = .{
+            .op = @enumFromInt(@as(u4, @intCast(op_id))),
+            .dst = @intCast(dst),
+            .src1 = @intCast(src1),
+            .src2 = @intCast(src2),
+            .imm = imm,
+        };
+        p.used += 1;
+    }
+    if (p.used == 0) return error.EmptyProgram;
+    p.instructions[p.used - 1].dst = NumRegs - 1;
+    return p;
+}

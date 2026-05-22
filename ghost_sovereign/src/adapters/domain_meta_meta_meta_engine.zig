@@ -28,9 +28,15 @@ pub var INNER_TIER1_OUTER_STEPS: u32 = 6;
 pub const MaxChainExtrasMM: usize = 16;
 pub var chain_extras_mm: std.BoundedArray(mm.MetaMetaProgram, MaxChainExtrasMM) = .{ .buffer = undefined, .len = 0 };
 
-pub fn chainExtrasMMReset() void { chain_extras_mm.len = 0; }
-pub fn chainExtrasMMAppend(p: mm.MetaMetaProgram) !void { try chain_extras_mm.append(p); }
-pub fn chainExtrasMMLen() usize { return chain_extras_mm.len; }
+pub fn chainExtrasMMReset() void {
+    chain_extras_mm.len = 0;
+}
+pub fn chainExtrasMMAppend(p: mm.MetaMetaProgram) !void {
+    try chain_extras_mm.append(p);
+}
+pub fn chainExtrasMMLen() usize {
+    return chain_extras_mm.len;
+}
 
 // When true, the chain runner's init pool generates MMMPs that begin
 // with INIT_MM_CUR → EVAL_MM_CUR → ACCEPT_MM_IF_BETTER (the analog of
@@ -38,6 +44,11 @@ pub fn chainExtrasMMLen() usize { return chain_extras_mm.len; }
 // the MMMP is random. Guarantees the init population isn't sentinel-
 // dominated. (Approach #5 of the 2026-05-21 invention-engine round.)
 pub var constrained_init: bool = false;
+
+// Wide CALL_MM mirrors Tier-1's wide CALL_META switch: address the
+// chain_extras_mm library with (dst << 2 | src1), giving 16 addressable
+// slots instead of the default 4 dst-only slots.
+pub var wide_call_mm: bool = false;
 
 pub const MetaMetaMetaOp = enum(u4) {
     INIT_MM_CUR = 0,
@@ -67,6 +78,55 @@ pub const MetaMetaMetaProgram = struct {
     instructions: [MaxMetaMetaMetaLen]MetaMetaMetaInstr,
     used: u8,
 };
+
+pub fn repairMetaMetaMetaOrdering(mmm_prog: MetaMetaMetaProgram) MetaMetaMetaProgram {
+    var q = mmm_prog;
+    var first_eval: ?usize = null;
+    var first_accept: ?usize = null;
+    var i: usize = 0;
+    while (i < q.used) : (i += 1) {
+        switch (q.instructions[i].op) {
+            .EVAL_MM_CUR => {
+                if (first_eval == null) first_eval = i;
+            },
+            .ACCEPT_MM_IF_BETTER, .ACCEPT_MM_SA => {
+                if (first_accept == null) first_accept = i;
+            },
+            else => {},
+        }
+    }
+
+    if (first_eval == null) {
+        const idx: usize = if (q.used > 0) q.used - 1 else 0;
+        q.instructions[idx] = .{ .op = .EVAL_MM_CUR, .dst = 0, .src1 = 0, .src2 = 0 };
+        if (q.used == 0) q.used = 1;
+        first_eval = idx;
+    }
+    if (first_accept == null) {
+        const idx = @min(q.used, first_eval.? + 1);
+        if (q.used < MaxMetaMetaMetaLen) {
+            var j = q.used;
+            while (j > idx) : (j -= 1) q.instructions[j] = q.instructions[j - 1];
+            q.instructions[idx] = .{ .op = .ACCEPT_MM_IF_BETTER, .dst = 0, .src1 = 0, .src2 = 0 };
+            q.used += 1;
+            first_accept = idx;
+        } else {
+            const replace_idx = if (idx < q.used) idx else q.used - 1;
+            q.instructions[replace_idx] = .{ .op = .ACCEPT_MM_IF_BETTER, .dst = 0, .src1 = 0, .src2 = 0 };
+            first_accept = replace_idx;
+        }
+    }
+    if (first_accept) |a| {
+        if (first_eval) |e| {
+            if (a < e) {
+                const tmp = q.instructions[a];
+                q.instructions[a] = q.instructions[e];
+                q.instructions[e] = tmp;
+            }
+        }
+    }
+    return q;
+}
 
 fn smix(x: u64) u64 {
     var z = x +% 0x9E3779B97F4A7C15;
@@ -213,7 +273,11 @@ fn execOp(st: *InnerState, ins: MetaMetaMetaInstr) void {
         },
         .CALL_MM => {
             if (chain_extras_mm.len > 0) {
-                const idx: usize = @as(usize, ins.dst) % chain_extras_mm.len;
+                const idx_raw: usize = if (wide_call_mm)
+                    (@as(usize, ins.dst) << 2) | @as(usize, ins.src1)
+                else
+                    @as(usize, ins.dst);
+                const idx: usize = idx_raw % chain_extras_mm.len;
                 st.mm_cur = mm.mutateMetaMeta(chain_extras_mm.buffer[idx], &st.rng);
                 st.cur_evaluated = false;
             }
@@ -244,9 +308,9 @@ pub fn randomMetaMetaMetaProgram(rng: *u64) MetaMetaMetaProgram {
     if (constrained_init and len >= 3) {
         // Hard-seed the first 3 ops as INIT, EVAL, ACCEPT to guarantee
         // a valid search loop. Remaining ops stay random.
-        p.instructions[0] = .{ .op = .INIT_MM_CUR,        .dst = 0, .src1 = 0, .src2 = 0 };
-        p.instructions[1] = .{ .op = .EVAL_MM_CUR,        .dst = 0, .src1 = 0, .src2 = 0 };
-        p.instructions[2] = .{ .op = .ACCEPT_MM_IF_BETTER,.dst = 0, .src1 = 0, .src2 = 0 };
+        p.instructions[0] = .{ .op = .INIT_MM_CUR, .dst = 0, .src1 = 0, .src2 = 0 };
+        p.instructions[1] = .{ .op = .EVAL_MM_CUR, .dst = 0, .src1 = 0, .src2 = 0 };
+        p.instructions[2] = .{ .op = .ACCEPT_MM_IF_BETTER, .dst = 0, .src1 = 0, .src2 = 0 };
     }
     return p;
 }
@@ -277,9 +341,11 @@ pub fn mutateMetaMetaMeta(p: MetaMetaMetaProgram, rng: *u64) MetaMetaMetaProgram
         const a: usize = rng.* % q.used;
         rng.* = smix(rng.*);
         const b: usize = rng.* % q.used;
-        const t = q.instructions[a]; q.instructions[a] = q.instructions[b]; q.instructions[b] = t;
+        const t = q.instructions[a];
+        q.instructions[a] = q.instructions[b];
+        q.instructions[b] = t;
     }
-    return q;
+    return if (constrained_init) repairMetaMetaMetaOrdering(q) else q;
 }
 
 pub fn opName(op: MetaMetaMetaOp) []const u8 {

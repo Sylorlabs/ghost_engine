@@ -35,9 +35,15 @@ pub var INNER_TIER0_STEPS: u32 = 200;
 pub const MaxChainExtras: usize = 16;
 pub var chain_extras: std.BoundedArray(tier0.MetaProgram, MaxChainExtras) = .{ .buffer = undefined, .len = 0 };
 
-pub fn chainExtrasReset() void { chain_extras.len = 0; }
-pub fn chainExtrasAppend(p: tier0.MetaProgram) !void { try chain_extras.append(p); }
-pub fn chainExtrasLen() usize { return chain_extras.len; }
+pub fn chainExtrasReset() void {
+    chain_extras.len = 0;
+}
+pub fn chainExtrasAppend(p: tier0.MetaProgram) !void {
+    try chain_extras.append(p);
+}
+pub fn chainExtrasLen() usize {
+    return chain_extras.len;
+}
 
 // When true, CALL_META composes the destination index from (dst<<2 | src1)
 // giving 4-bit (16 distinct values) addressability into chain_extras
@@ -58,6 +64,12 @@ pub var wide_call_meta: bool = false;
 // Default false so Tier-1 chain runner results stay reproducible.
 // Tier-2 (mmm_chain_runner) enables it via --shaped-fitness flag.
 pub var shaped_fitness: bool = false;
+
+// Opt-in structural bootstrap for MetaMetaPrograms. When enabled,
+// generated MMPs contain the same minimal loop as a hand-written search
+// engine: INIT_META_CUR -> EVAL_META_CUR -> ACCEPT_META_IF_BETTER.
+// Mutations then repair missing/misordered EVAL/ACCEPT instructions.
+pub var constrained_init: bool = false;
 
 fn shapedScore(mm_prog: MetaMetaProgram) f64 {
     var score: f64 = -1.0e5;
@@ -94,20 +106,69 @@ fn shapedScore(mm_prog: MetaMetaProgram) f64 {
     return score;
 }
 
+pub fn repairMetaMetaOrdering(mm_prog: MetaMetaProgram) MetaMetaProgram {
+    var q = mm_prog;
+    var first_eval: ?usize = null;
+    var first_accept: ?usize = null;
+    var i: usize = 0;
+    while (i < q.used) : (i += 1) {
+        switch (q.instructions[i].op) {
+            .EVAL_META_CUR => {
+                if (first_eval == null) first_eval = i;
+            },
+            .ACCEPT_META_IF_BETTER, .ACCEPT_META_SA => {
+                if (first_accept == null) first_accept = i;
+            },
+            else => {},
+        }
+    }
+
+    if (first_eval == null) {
+        const idx: usize = if (q.used > 0) q.used - 1 else 0;
+        q.instructions[idx] = .{ .op = .EVAL_META_CUR, .dst = 0, .src1 = 0, .src2 = 0 };
+        if (q.used == 0) q.used = 1;
+        first_eval = idx;
+    }
+    if (first_accept == null) {
+        const idx = @min(q.used, first_eval.? + 1);
+        if (q.used < MaxMetaMetaLen) {
+            var j = q.used;
+            while (j > idx) : (j -= 1) q.instructions[j] = q.instructions[j - 1];
+            q.instructions[idx] = .{ .op = .ACCEPT_META_IF_BETTER, .dst = 0, .src1 = 0, .src2 = 0 };
+            q.used += 1;
+            first_accept = idx;
+        } else {
+            const replace_idx = if (idx < q.used) idx else q.used - 1;
+            q.instructions[replace_idx] = .{ .op = .ACCEPT_META_IF_BETTER, .dst = 0, .src1 = 0, .src2 = 0 };
+            first_accept = replace_idx;
+        }
+    }
+    if (first_accept) |a| {
+        if (first_eval) |e| {
+            if (a < e) {
+                const tmp = q.instructions[a];
+                q.instructions[a] = q.instructions[e];
+                q.instructions[e] = tmp;
+            }
+        }
+    }
+    return q;
+}
+
 pub const MetaMetaOp = enum(u4) {
-    INIT_META_CUR = 0,         // meta_cur := randomMetaProgram(rng); q_cur := -inf
-    MUTATE_META_CUR = 1,       // meta_cur := mutateMeta(meta_cur, rng)
+    INIT_META_CUR = 0, // meta_cur := randomMetaProgram(rng); q_cur := -inf
+    MUTATE_META_CUR = 1, // meta_cur := mutateMeta(meta_cur, rng)
     MUTATE_META_BEST_TO_CUR = 2, // meta_cur := mutateMeta(meta_best, rng)
-    CROSS_META_BEST_CUR = 3,   // crossover not exported by tier0 — emulate by mixing instructions
-    EVAL_META_CUR = 4,         // q_cur := tier0.run(meta_cur, INNER_TIER0_STEPS, rng); cur_evaluated := true
+    CROSS_META_BEST_CUR = 3, // crossover not exported by tier0 — emulate by mixing instructions
+    EVAL_META_CUR = 4, // q_cur := tier0.run(meta_cur, INNER_TIER0_STEPS, rng); cur_evaluated := true
     ACCEPT_META_IF_BETTER = 5, // if q_cur > q_best: meta_best := meta_cur
-    ACCEPT_META_SA = 6,        // metropolis on regs[0] temperature
+    ACCEPT_META_SA = 6, // metropolis on regs[0] temperature
     RESET_META_CUR_TO_BEST = 7,
     RAND_REG = 8,
     REG_XOR = 9,
     REG_SHR = 10,
     TEMP_DECAY = 11,
-    CALL_META = 12,            // meta_cur := chain_extras[dst % len]; cur_evaluated := false
+    CALL_META = 12, // meta_cur := chain_extras[dst % len]; cur_evaluated := false
     NOP = 13,
 };
 
@@ -236,6 +297,9 @@ fn execOp(st: *InnerState, ins: MetaMetaInstr) void {
             // MetaProgram surfaced).
             st.rng = smix(st.rng);
             const seed = st.rng;
+            if (tier0.repair_meta_ordering) {
+                st.meta_cur = tier0.repairMetaOrdering(st.meta_cur);
+            }
             const q = tier0.run(st.meta_cur, INNER_TIER0_STEPS, seed);
             // Sentinel: replace inf/nan with a finite "very bad" value
             // so an un-evaluating MetaProgram (scoring 0) ranks below
@@ -329,6 +393,11 @@ pub fn randomMetaMetaProgram(rng: *u64) MetaMetaProgram {
     var p = MetaMetaProgram{ .instructions = undefined, .used = len };
     var i: usize = 0;
     while (i < len) : (i += 1) p.instructions[i] = randomMetaMetaInstr(rng);
+    if (constrained_init and len >= 3) {
+        p.instructions[0] = .{ .op = .INIT_META_CUR, .dst = 0, .src1 = 0, .src2 = 0 };
+        p.instructions[1] = .{ .op = .EVAL_META_CUR, .dst = 0, .src1 = 0, .src2 = 0 };
+        p.instructions[2] = .{ .op = .ACCEPT_META_IF_BETTER, .dst = 0, .src1 = 0, .src2 = 0 };
+    }
     return p;
 }
 
@@ -358,9 +427,11 @@ pub fn mutateMetaMeta(p: MetaMetaProgram, rng: *u64) MetaMetaProgram {
         const a: usize = rng.* % q.used;
         rng.* = smix(rng.*);
         const b: usize = rng.* % q.used;
-        const t = q.instructions[a]; q.instructions[a] = q.instructions[b]; q.instructions[b] = t;
+        const t = q.instructions[a];
+        q.instructions[a] = q.instructions[b];
+        q.instructions[b] = t;
     }
-    return q;
+    return if (constrained_init) repairMetaMetaOrdering(q) else q;
 }
 
 pub fn opName(op: MetaMetaOp) []const u8 {

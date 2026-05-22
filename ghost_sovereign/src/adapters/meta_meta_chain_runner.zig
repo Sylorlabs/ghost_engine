@@ -13,7 +13,10 @@ fn loadMetaProgramCsv(allocator: std.mem.Allocator, path: []const u8) !tier0.Met
     var lines = std.mem.tokenizeAny(u8, contents, "\n\r");
     var first = true;
     while (lines.next()) |line| {
-        if (first) { first = false; continue; }
+        if (first) {
+            first = false;
+            continue;
+        }
         var fields = std.mem.tokenizeAny(u8, line, ",");
         _ = fields.next() orelse continue; // idx
         const op_id_s = fields.next() orelse continue;
@@ -112,10 +115,13 @@ const GenResult = struct {
 // thread does the logging after they join.
 const NullWriter = struct {
     pub fn print(self: NullWriter, comptime fmt: []const u8, args: anytype) !void {
-        _ = self; _ = fmt; _ = args;
+        _ = self;
+        _ = fmt;
+        _ = args;
     }
     pub fn writeAll(self: NullWriter, bytes: []const u8) !void {
-        _ = self; _ = bytes;
+        _ = self;
+        _ = bytes;
     }
 };
 
@@ -279,6 +285,8 @@ pub fn main() !void {
     var out_subdir: []const u8 = "mm_chain";
     var seed_library: []const u8 = "";
     var wide_call_meta: bool = false;
+    var constrained_meta_init: bool = false;
+    var initial_best_holdout: f64 = -std.math.inf(f64);
     // Monotone retry mode. When >0, each gen runs up to N attempts
     // with rotated seeds; only ADVANCEs cumulative_best if any attempt
     // strictly beats prior best holdout. Chain never hard-halts —
@@ -303,16 +311,21 @@ pub fn main() !void {
             seed_library = arg["--seed-library=".len..];
         } else if (std.mem.eql(u8, arg, "--wide-call-meta")) {
             wide_call_meta = true;
+        } else if (std.mem.eql(u8, arg, "--constrained-meta-init")) {
+            constrained_meta_init = true;
+        } else if (std.mem.startsWith(u8, arg, "--initial-best-holdout=")) {
+            initial_best_holdout = try std.fmt.parseFloat(f64, arg["--initial-best-holdout=".len..]);
         } else if (std.mem.startsWith(u8, arg, "--monotone-retries=")) {
             monotone_retries = try std.fmt.parseInt(u32, arg["--monotone-retries=".len..], 10);
         }
     }
     mm.wide_call_meta = wide_call_meta;
+    tier0.constrained_init = constrained_meta_init;
 
     const stdout = std.io.getStdOut().writer();
     try stdout.print("=== TIER-1 CHAIN RUNNER ===\n", .{});
-    try stdout.print("generations={d} tier1_iters={d} mm_outer_iters={d} tier0_inner_steps={d} root_seed=0x{X} wide_call_meta={} monotone_retries={d}\n", .{
-        generations, tier1_iters, mm_outer_iters, tier0_inner_steps, root_seed, wide_call_meta, monotone_retries,
+    try stdout.print("generations={d} tier1_iters={d} mm_outer_iters={d} tier0_inner_steps={d} root_seed=0x{X} wide_call_meta={} constrained_meta_init={} monotone_retries={d} initial_best_holdout={d:.4}\n", .{
+        generations, tier1_iters, mm_outer_iters, tier0_inner_steps, root_seed, wide_call_meta, constrained_meta_init, monotone_retries, initial_best_holdout,
     });
 
     // Reset Tier-1's MetaProgram library at start of chain
@@ -344,7 +357,7 @@ pub fn main() !void {
     try log.writeAll("gen,attempt,train_anchor_mean,holdout_mean,best_so_far,verdict,accepted,mm_evals,chain_extras_len\n");
 
     var prev_holdout: f64 = -std.math.inf(f64);
-    var cumulative_best_holdout: f64 = -std.math.inf(f64);
+    var cumulative_best_holdout: f64 = initial_best_holdout;
     var cumulative_best_meta: tier0.MetaProgram = undefined;
     var cumulative_best_mm: mm.MetaMetaProgram = undefined;
     var cumulative_best_gen: u32 = 0;
@@ -383,11 +396,7 @@ pub fn main() !void {
 
         for (0..max_attempts) |i| {
             const attempt_u: u32 = @intCast(i);
-            const gen_seed = smix(
-                root_seed
-                ^ (@as(u64, 0xA5A5_A5A5_5A5A_5A5A) +% gen)
-                ^ (@as(u64, 0xC0DE_BABE_0001) *% (@as(u64, attempt_u) +% 1))
-            );
+            const gen_seed = smix(root_seed ^ (@as(u64, 0xA5A5_A5A5_5A5A_5A5A) +% gen) ^ (@as(u64, 0xC0DE_BABE_0001) *% (@as(u64, attempt_u) +% 1)));
             ctxs[i] = .{
                 .gen = gen,
                 .tier1_iters = tier1_iters,
@@ -422,8 +431,8 @@ pub fn main() !void {
             else
                 "NO_PROGRESS";
             try log.print("{d},{d},{d:.6},{d:.6},{d:.6},{s},{d},{d},{d}\n", .{
-                r.gen, attempt_u + 1, r.train_anchor_mean, r.holdout_mean, cumulative_best_holdout,
-                attempt_verdict, r.accepted, r.mm_evals, mm.chainExtrasLen(),
+                r.gen,           attempt_u + 1, r.train_anchor_mean, r.holdout_mean,      cumulative_best_holdout,
+                attempt_verdict, r.accepted,    r.mm_evals,          mm.chainExtrasLen(),
             });
         }
 
@@ -431,9 +440,13 @@ pub fn main() !void {
             try stdout.print("  ALL attempts errored; treating as no-progress\n", .{});
             // best_attempt_r stays uninitialized; downstream uses placeholder
             best_attempt_r = .{
-                .gen = gen, .train_anchor_mean = -1.0e6, .holdout_mean = -1.0e6,
-                .accepted = 0, .mm_evals = 0,
-                .champion_mm = undefined, .champion_meta = undefined,
+                .gen = gen,
+                .train_anchor_mean = -1.0e6,
+                .holdout_mean = -1.0e6,
+                .accepted = 0,
+                .mm_evals = 0,
+                .champion_mm = undefined,
+                .champion_meta = undefined,
             };
         }
 
@@ -470,8 +483,8 @@ pub fn main() !void {
 
         // Gen-level summary log entry (attempt=0 indicates summary).
         try log.print("{d},0,{d:.6},{d:.6},{d:.6},{s},{d},{d},{d}\n", .{
-            r.gen, r.train_anchor_mean, r.holdout_mean, cumulative_best_holdout,
-            verdict, r.accepted, r.mm_evals, mm.chainExtrasLen(),
+            r.gen,   r.train_anchor_mean, r.holdout_mean, cumulative_best_holdout,
+            verdict, r.accepted,          r.mm_evals,     mm.chainExtrasLen(),
         });
         try stdout.print("gen {d} summary: {s}  (best_attempt_holdout={d:.4}  best_so_far={d:.4}  attempts_run={d})\n", .{
             gen, verdict, r.holdout_mean, cumulative_best_holdout, attempts_run,

@@ -40,7 +40,10 @@ fn loadMetaMetaProgramCsv(allocator: std.mem.Allocator, path: []const u8) !mm.Me
     var lines = std.mem.tokenizeAny(u8, contents, "\n\r");
     var first = true;
     while (lines.next()) |line| {
-        if (first) { first = false; continue; }
+        if (first) {
+            first = false;
+            continue;
+        }
         var fields = std.mem.tokenizeAny(u8, line, ",");
         _ = fields.next() orelse continue; // idx
         const op_id_s = fields.next() orelse continue;
@@ -109,6 +112,55 @@ const GenResult = struct {
     champion_mm: mm.MetaMetaProgram,
     champion_meta: tier0.MetaProgram,
 };
+
+fn meaningfulHoldout(x: f64) bool {
+    return std.math.isFinite(x) and x > -999000.0;
+}
+
+// Null writer for parallel workers. The main thread owns stdout logging after
+// joins; workers only compute attempt results.
+const NullWriter = struct {
+    pub fn print(self: NullWriter, comptime fmt: []const u8, args: anytype) !void {
+        _ = self;
+        _ = fmt;
+        _ = args;
+    }
+    pub fn writeAll(self: NullWriter, bytes: []const u8) !void {
+        _ = self;
+        _ = bytes;
+    }
+};
+
+const AttemptCtx = struct {
+    gen: u32,
+    tier2_iters: u32,
+    mmm_outer_iters: u32,
+    tier1_outer_iters: u32,
+    tier0_inner_steps: u32,
+    seed: u64,
+    result: GenResult = undefined,
+    err: ?anyerror = null,
+    done: bool = false,
+};
+
+fn attemptWorker(ctx: *AttemptCtx) void {
+    const nw = NullWriter{};
+    const r = runTier2Generation(
+        ctx.gen,
+        ctx.tier2_iters,
+        ctx.mmm_outer_iters,
+        ctx.tier1_outer_iters,
+        ctx.tier0_inner_steps,
+        ctx.seed,
+        nw,
+    ) catch |e| {
+        ctx.err = e;
+        ctx.done = true;
+        return;
+    };
+    ctx.result = r;
+    ctx.done = true;
+}
 
 fn runTier2Generation(
     gen: usize,
@@ -239,6 +291,13 @@ pub fn main() !void {
     var seed_mm_library: []const u8 = "";
     var shaped_fitness: bool = false;
     var constrained_init: bool = false;
+    var constrained_meta_init: bool = false;
+    var constrained_mm_init: bool = false;
+    var wide_call_meta: bool = false;
+    var wide_call_mm: bool = false;
+    var repair_meta_ordering: bool = false;
+    var promotion_threshold: f64 = -std.math.inf(f64);
+    var monotone_retries: u32 = 0;
 
     while (args.next()) |arg| {
         if (std.mem.startsWith(u8, arg, "--generations=")) {
@@ -261,15 +320,34 @@ pub fn main() !void {
             shaped_fitness = true;
         } else if (std.mem.eql(u8, arg, "--constrained-init")) {
             constrained_init = true;
+        } else if (std.mem.eql(u8, arg, "--constrained-meta-init")) {
+            constrained_meta_init = true;
+        } else if (std.mem.eql(u8, arg, "--constrained-mm-init")) {
+            constrained_mm_init = true;
+        } else if (std.mem.eql(u8, arg, "--wide-call-meta")) {
+            wide_call_meta = true;
+        } else if (std.mem.eql(u8, arg, "--wide-call-mm")) {
+            wide_call_mm = true;
+        } else if (std.mem.eql(u8, arg, "--repair-meta-ordering")) {
+            repair_meta_ordering = true;
+        } else if (std.mem.startsWith(u8, arg, "--promotion-threshold=")) {
+            promotion_threshold = try std.fmt.parseFloat(f64, arg["--promotion-threshold=".len..]);
+        } else if (std.mem.startsWith(u8, arg, "--monotone-retries=")) {
+            monotone_retries = try std.fmt.parseInt(u32, arg["--monotone-retries=".len..], 10);
         }
     }
     mm.shaped_fitness = shaped_fitness;
+    mm.wide_call_meta = wide_call_meta;
+    mm.constrained_init = constrained_mm_init;
+    tier0.constrained_init = constrained_meta_init;
+    tier0.repair_meta_ordering = repair_meta_ordering;
     mmm.constrained_init = constrained_init;
+    mmm.wide_call_mm = wide_call_mm;
 
     const stdout = std.io.getStdOut().writer();
     try stdout.print("=== TIER-2 CHAIN RUNNER (MMMP) ===\n", .{});
-    try stdout.print("generations={d} tier2_iters={d} mmm_outer_iters={d} tier1_outer_iters={d} tier0_inner_steps={d} root_seed=0x{X} shaped_fitness={} constrained_init={}\n", .{
-        generations, tier2_iters, mmm_outer_iters, tier1_outer_iters, tier0_inner_steps, root_seed, shaped_fitness, constrained_init,
+    try stdout.print("generations={d} tier2_iters={d} mmm_outer_iters={d} tier1_outer_iters={d} tier0_inner_steps={d} root_seed=0x{X} shaped_fitness={} constrained_init={} constrained_meta_init={} constrained_mm_init={} wide_call_meta={} wide_call_mm={} repair_meta_ordering={} monotone_retries={d} promotion_threshold={d:.4}\n", .{
+        generations, tier2_iters, mmm_outer_iters, tier1_outer_iters, tier0_inner_steps, root_seed, shaped_fitness, constrained_init, constrained_meta_init, constrained_mm_init, wide_call_meta, wide_call_mm, repair_meta_ordering, monotone_retries, promotion_threshold,
     });
 
     mm.chainExtrasReset();
@@ -293,38 +371,128 @@ pub fn main() !void {
     var log_file = try std.fs.cwd().createFile(log_path, .{ .truncate = true });
     defer log_file.close();
     const log = log_file.writer();
-    try log.writeAll("gen,train_anchor_mean,holdout_mean,prev_holdout,verdict,accepted,mmm_evals,chain_extras_mm_len\n");
+    try log.writeAll("gen,attempt,train_anchor_mean,holdout_mean,best_so_far,verdict,accepted,mmm_evals,chain_extras_mm_len\n");
 
     var prev_holdout: f64 = -std.math.inf(f64);
+    var cumulative_best_holdout: f64 = -std.math.inf(f64);
+    var cumulative_best_mmm: mmm.MetaMetaMetaProgram = undefined;
+    var cumulative_best_mm: mm.MetaMetaProgram = undefined;
+    var cumulative_best_meta: tier0.MetaProgram = undefined;
+    var cumulative_best_gen: u32 = 0;
+    var cumulative_best_attempt: u32 = 0;
     var any_strict_domination: bool = false;
     var halted = false;
 
     var gen: u32 = 0;
     while (gen < generations) : (gen += 1) {
-        try stdout.print("\n--- generation {d} | chain_extras_mm_len={d} ---\n", .{ gen, mmm.chainExtrasMMLen() });
-        const gen_seed = smix(root_seed ^ (@as(u64, 0xC3C3_C3C3_3C3C_3C3C) +% gen));
-        const r = try runTier2Generation(gen, tier2_iters, mmm_outer_iters, tier1_outer_iters, tier0_inner_steps, gen_seed, stdout);
+        try stdout.print("\n--- generation {d} | chain_extras_mm_len={d} | best_so_far={d:.4} ---\n", .{
+            gen, mmm.chainExtrasMMLen(), cumulative_best_holdout,
+        });
+
+        const max_attempts: u32 = if (monotone_retries == 0) 1 else monotone_retries;
+        var best_attempt_r: GenResult = undefined;
+        var have_best_attempt = false;
+        var advance_this_gen = false;
+        var best_attempt_idx: u32 = 0;
+
+        if (max_attempts > 1) {
+            try stdout.print("  spawning {d} parallel attempts...\n", .{max_attempts});
+        }
+        var ctxs = try allocator.alloc(AttemptCtx, max_attempts);
+        defer allocator.free(ctxs);
+        var threads = try allocator.alloc(std.Thread, max_attempts);
+        defer allocator.free(threads);
+
+        for (0..max_attempts) |i| {
+            const attempt_u: u32 = @intCast(i);
+            const gen_seed = smix(root_seed ^ (@as(u64, 0xC3C3_C3C3_3C3C_3C3C) +% gen) ^ (@as(u64, 0xBEEF_CAFE_0001) *% (@as(u64, attempt_u) +% 1)));
+            ctxs[i] = .{
+                .gen = gen,
+                .tier2_iters = tier2_iters,
+                .mmm_outer_iters = mmm_outer_iters,
+                .tier1_outer_iters = tier1_outer_iters,
+                .tier0_inner_steps = tier0_inner_steps,
+                .seed = gen_seed,
+            };
+            threads[i] = try std.Thread.spawn(.{}, attemptWorker, .{&ctxs[i]});
+        }
+        for (threads) |t| t.join();
+
+        for (ctxs, 0..) |*ctx, i| {
+            const attempt_u: u32 = @intCast(i);
+            if (ctx.err) |e| {
+                try stdout.print("  attempt {d}/{d} ERROR {s}\n", .{ attempt_u + 1, max_attempts, @errorName(e) });
+                continue;
+            }
+            const r = ctx.result;
+            try stdout.print("  attempt {d}/{d} seed=0x{X} anchor={d:.4} holdout={d:.4}\n", .{
+                attempt_u + 1, max_attempts, ctx.seed, r.train_anchor_mean, r.holdout_mean,
+            });
+
+            if (!have_best_attempt or r.holdout_mean > best_attempt_r.holdout_mean) {
+                best_attempt_r = r;
+                have_best_attempt = true;
+                best_attempt_idx = attempt_u + 1;
+            }
+
+            const attempt_verdict: []const u8 = if (meaningfulHoldout(r.holdout_mean) and r.holdout_mean > cumulative_best_holdout + 0.5)
+                "STRICT_PROGRESS"
+            else
+                "NO_PROGRESS";
+            try log.print("{d},{d},{d:.6},{d:.6},{d:.6},{s},{d},{d},{d}\n", .{
+                r.gen,           attempt_u + 1, r.train_anchor_mean, r.holdout_mean,         cumulative_best_holdout,
+                attempt_verdict, r.accepted,    r.mmm_evals,         mmm.chainExtrasMMLen(),
+            });
+        }
+
+        if (!have_best_attempt) {
+            try stdout.print("  ALL attempts errored; treating as no-progress\n", .{});
+            best_attempt_r = .{
+                .gen = gen,
+                .train_anchor_mean = -1.0e6,
+                .holdout_mean = -1.0e6,
+                .accepted = 0,
+                .mmm_evals = 0,
+                .champion_mmm = undefined,
+                .champion_mm = undefined,
+                .champion_meta = undefined,
+            };
+        }
+
+        if (monotone_retries == 0 or (have_best_attempt and meaningfulHoldout(best_attempt_r.holdout_mean) and best_attempt_r.holdout_mean > cumulative_best_holdout + 0.5)) {
+            advance_this_gen = true;
+        }
+
+        const r = best_attempt_r;
 
         var verdict: []const u8 = "ADVANCE";
-        if (gen > 0) {
-            if (r.holdout_mean > prev_holdout + 0.5) {
-                verdict = "ADVANCE + STRICT_DOMINATION";
+        if (monotone_retries > 0) {
+            if (advance_this_gen) {
+                verdict = "ADVANCE + STRICT_PROGRESS";
                 any_strict_domination = true;
-            } else if (r.holdout_mean < prev_holdout - 0.5) {
-                verdict = "HALT(holdout_regression)";
-                halted = true;
             } else {
-                verdict = "ADVANCE(tie)";
+                verdict = "SOFT_HALT(retries_exhausted_but_continuing)";
+            }
+        } else {
+            if (gen > 0) {
+                if (r.holdout_mean > prev_holdout + 0.5) {
+                    verdict = "ADVANCE + STRICT_DOMINATION";
+                    any_strict_domination = true;
+                } else if (r.holdout_mean < prev_holdout - 0.5) {
+                    verdict = "HALT(holdout_regression)";
+                    halted = true;
+                } else {
+                    verdict = "ADVANCE(tie)";
+                }
             }
         }
 
-        try log.print("{d},{d:.6},{d:.6},{d:.6},{s},{d},{d},{d}\n", .{
-            r.gen, r.train_anchor_mean, r.holdout_mean,
-            if (std.math.isFinite(prev_holdout)) prev_holdout else 0.0,
-            verdict, r.accepted, r.mmm_evals, mmm.chainExtrasMMLen(),
+        try log.print("{d},0,{d:.6},{d:.6},{d:.6},{s},{d},{d},{d}\n", .{
+            r.gen,   r.train_anchor_mean, r.holdout_mean, cumulative_best_holdout,
+            verdict, r.accepted,          r.mmm_evals,    mmm.chainExtrasMMLen(),
         });
-        try stdout.print("verdict: {s}  (holdout {d:.4} vs prev {d:.4})\n", .{
-            verdict, r.holdout_mean, if (std.math.isFinite(prev_holdout)) prev_holdout else 0.0,
+        try stdout.print("gen {d} summary: {s}  (best_attempt_holdout={d:.4}  best_so_far={d:.4}  attempts_run={d})\n", .{
+            gen, verdict, r.holdout_mean, cumulative_best_holdout, max_attempts,
         });
 
         // Persist champions
@@ -350,9 +518,19 @@ pub fn main() !void {
             try tier0.metaToCsv(r.champion_meta, f.writer());
         }
 
-        if (halted) break;
+        if (advance_this_gen and meaningfulHoldout(r.holdout_mean) and r.holdout_mean > cumulative_best_holdout) {
+            cumulative_best_holdout = r.holdout_mean;
+            cumulative_best_mmm = r.champion_mmm;
+            cumulative_best_mm = r.champion_mm;
+            cumulative_best_meta = r.champion_meta;
+            cumulative_best_gen = gen;
+            cumulative_best_attempt = best_attempt_idx;
+        }
 
-        try mmm.chainExtrasMMAppend(r.champion_mm);
+        if (advance_this_gen) {
+            try mmm.chainExtrasMMAppend(r.champion_mm);
+        }
+        if (halted and monotone_retries == 0) break;
         prev_holdout = r.holdout_mean;
     }
 
@@ -363,4 +541,35 @@ pub fn main() !void {
         try stdout.print("Completed {d} generations.\n", .{generations});
     }
     try stdout.print("STRICT_DOMINATION ever observed: {s}\n", .{if (any_strict_domination) "YES" else "NO"});
+    try stdout.print("BEST_HOLDOUT_EVER = {d:.4}  (at gen {d}, attempt {d})\n", .{
+        cumulative_best_holdout, cumulative_best_gen, cumulative_best_attempt,
+    });
+    if (std.math.isFinite(promotion_threshold)) {
+        try stdout.print("PROMOTION_THRESHOLD_EXCEEDED = {s}  (threshold={d:.4})\n", .{
+            if (cumulative_best_holdout > promotion_threshold + 0.5) "YES" else "NO",
+            promotion_threshold,
+        });
+    }
+
+    if (std.math.isFinite(cumulative_best_holdout)) {
+        var pb: [192]u8 = undefined;
+        const p = try std.fmt.bufPrint(&pb, "{s}/BEST_champion_mmm.csv", .{out_dir});
+        var f = try std.fs.cwd().createFile(p, .{ .truncate = true });
+        defer f.close();
+        try mmm.mmmToCsv(cumulative_best_mmm, f.writer());
+    }
+    if (std.math.isFinite(cumulative_best_holdout)) {
+        var pb: [192]u8 = undefined;
+        const p = try std.fmt.bufPrint(&pb, "{s}/BEST_champion_mm.csv", .{out_dir});
+        var f = try std.fs.cwd().createFile(p, .{ .truncate = true });
+        defer f.close();
+        try mm.metaMetaToCsv(cumulative_best_mm, f.writer());
+    }
+    if (std.math.isFinite(cumulative_best_holdout)) {
+        var pb: [192]u8 = undefined;
+        const p = try std.fmt.bufPrint(&pb, "{s}/BEST_champion_meta.csv", .{out_dir});
+        var f = try std.fs.cwd().createFile(p, .{ .truncate = true });
+        defer f.close();
+        try tier0.metaToCsv(cumulative_best_meta, f.writer());
+    }
 }

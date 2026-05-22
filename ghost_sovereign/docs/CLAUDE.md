@@ -328,6 +328,18 @@ comparison across all tiers.
 - **Parallel attempts saturate the CPU.** 10 parallel attempts per
   gen uses up to 10 cores per chain. Run one chain at a time when
   using `--monotone-retries=10` on a 12-core machine.
+- **Late 2026-05-21 Phase A/B/C run:** stacked Engine-2 tricks preserved
+  `47.1615` but the best artifact was a near-copy of the F00D seed.
+  Engine 3 with monotone+parallel+wide CALL first reached **42.9801** with
+  structurally non-copy MMP/MMMP output. Adding constrained lower-tier
+  basics plus QD produced the first fair-budget Engine-3 crossing:
+  **47.2299** at 150 lower-tier steps vs the prior Engine-2 **47.1615**
+  ceiling, confirmed over 64 held-out seeds. The same invented structure
+  scales to **47.4867** at 200 lower-tier steps with 64-seed validation
+  mean **46.9838**. Engine 4 is now implemented
+  (`domain_meta_meta_meta_meta_engine.zig`, `mmmm_qd_probe.zig`) but its
+  bounded probes are not competitive yet (**38.4430** best observed). See
+  `docs/recursive_engine_phase_abc_2026_05_21.md`.
 
 ---
 
