@@ -3,6 +3,7 @@ const mmmm = @import("domain_meta_meta_meta_meta_engine.zig");
 const mmm = @import("domain_meta_meta_meta_engine.zig");
 const mm = @import("domain_meta_meta_engine.zig");
 const tier0 = @import("domain_meta_engine.zig");
+const mixer = @import("domain_u64_mixer.zig");
 
 // Direct Engine-4 analog of mmm_holdout_hillclimb.zig.
 // Pattern: load (or randomize) an MMMMP, evaluate it on a fixed anchor set
@@ -214,6 +215,7 @@ pub fn main() !void {
     var wide_call_mm = false;
     var wide_call_mmm = false;
     var restart_every: u32 = 0;
+    var anti_human_penalty: f64 = 0;
 
     while (args.next()) |arg| {
         if (std.mem.startsWith(u8, arg, "--iters=")) {
@@ -252,9 +254,12 @@ pub fn main() !void {
             wide_call_mmm = true;
         } else if (std.mem.startsWith(u8, arg, "--restart-every=")) {
             restart_every = try std.fmt.parseInt(u32, arg["--restart-every=".len..], 10);
+        } else if (std.mem.startsWith(u8, arg, "--anti-human-penalty=")) {
+            anti_human_penalty = try std.fmt.parseFloat(f64, arg["--anti-human-penalty=".len..]);
         }
     }
 
+    mixer.anti_human_penalty = anti_human_penalty;
     tier0.constrained_init = constrained_meta_init;
     mm.constrained_init = constrained_mm_init;
     mm.shaped_fitness = shaped_fitness;

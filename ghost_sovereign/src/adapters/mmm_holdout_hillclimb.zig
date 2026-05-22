@@ -2,6 +2,7 @@ const std = @import("std");
 const mmm = @import("domain_meta_meta_meta_engine.zig");
 const mm = @import("domain_meta_meta_engine.zig");
 const tier0 = @import("domain_meta_engine.zig");
+const mixer = @import("domain_u64_mixer.zig");
 
 const anchor_seeds = [_]u64{
     0xC0C0_C0C0_F00D_0001,
@@ -196,6 +197,7 @@ pub fn main() !void {
     var wide_call_mm = false;
     var repair_meta_ordering = false;
     var restart_every: u32 = 0;
+    var anti_human_penalty: f64 = 0;
 
     while (args.next()) |arg| {
         if (std.mem.startsWith(u8, arg, "--iters=")) {
@@ -230,9 +232,16 @@ pub fn main() !void {
             repair_meta_ordering = true;
         } else if (std.mem.startsWith(u8, arg, "--restart-every=")) {
             restart_every = try std.fmt.parseInt(u32, arg["--restart-every=".len..], 10);
+        } else if (std.mem.startsWith(u8, arg, "--anti-human-penalty=")) {
+            anti_human_penalty = try std.fmt.parseFloat(f64, arg["--anti-human-penalty=".len..]);
+        } else if (std.mem.eql(u8, arg, "--compressor-mode")) {
+            mixer.compressor_mode = true;
+        } else if (std.mem.eql(u8, arg, "--live-macro-graduation")) {
+            mixer.live_macro_graduation = true;
         }
     }
 
+    mixer.anti_human_penalty = anti_human_penalty;
     mm.shaped_fitness = shaped_fitness;
     mm.wide_call_meta = wide_call_meta;
     mm.constrained_init = constrained_mm_init;

@@ -209,12 +209,14 @@ fn execOp(st: *InnerState, ins: MetaInstr) void {
             if (st.q_best == NegInf) {
                 st.q_best = st.q_cur;
                 st.cand_best = st.cand_cur;
+                target.tryGraduateMacro(st.cand_cur);
             }
         },
         .ACCEPT_IF_BETTER => {
             if (st.cur_evaluated and st.q_cur > st.q_best) {
                 st.q_best = st.q_cur;
                 st.cand_best = st.cand_cur;
+                target.tryGraduateMacro(st.cand_cur);
             }
         },
         .ACCEPT_SA => {
@@ -222,6 +224,7 @@ fn execOp(st: *InnerState, ins: MetaInstr) void {
             if (st.q_cur > st.q_best) {
                 st.q_best = st.q_cur;
                 st.cand_best = st.cand_cur;
+                target.tryGraduateMacro(st.cand_cur);
                 return;
             }
             const temp_raw = st.regs[0];

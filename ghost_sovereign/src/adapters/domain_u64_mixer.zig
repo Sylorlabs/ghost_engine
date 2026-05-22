@@ -43,6 +43,49 @@ const ExpandedMixingOpsWithLib: u64 = 15;
 pub const MaxChainExtras: usize = 16;
 pub var chain_extras: std.BoundedArray(Program, MaxChainExtras) = .{ .buffer = undefined, .len = 0 };
 
+// Open-ended primitives experiment (2026-05-22 MVP). When true,
+// EVAL_CUR will append the discovered mixer to chain_extras (the
+// CALL_LIB macro pool) on each NEW q_best, up to MaxChainExtras.
+// This lets the engine GRADUATE its own champions into composite
+// primitives during a single run, instead of only between chain
+// generations. NOT thread-safe — disable for parallel monotone runs.
+pub var live_macro_graduation: bool = false;
+
+pub fn tryGraduateMacro(p: Program) void {
+    if (!live_macro_graduation) return;
+    if (chain_extras.len >= MaxChainExtras) return;
+    chain_extras.append(p) catch {};
+}
+
+// Adversarial-fitness experiment (2026-05-22): penalty K applied per
+// instruction using a "human-named compound" op (SPLITMIX_STEP, MUM,
+// ADD_ROT, BSWAP). These each bundle multiple operations into one
+// named primitive a human algorithm designer chose. Penalizing them
+// forces the engine to reproduce equivalent behavior using primitive
+// ops (XOR, ADD, MUL, ROTL/R, SHL_XOR, SHR_XOR, ADD_CONST, AND_NOT,
+// OR_SHIFT). Defaults to 0 (no penalty) so existing runs are
+// byte-identical.
+pub var anti_human_penalty: f64 = 0;
+
+// Domain-leap experiment (2026-05-22): when true, evaluateQuality
+// rewards COMPRESSOR-style behavior (low-entropy / non-bijective
+// output, low avalanche) instead of mixer-style behavior. Same
+// program substrate, opposite fitness pressure — discovered programs
+// should look structurally different from mixers. Off by default.
+pub var compressor_mode: bool = false;
+
+fn humanNamedOpCount(p: Program) u32 {
+    var n: u32 = 0;
+    var i: usize = 0;
+    while (i < p.used) : (i += 1) {
+        switch (p.instructions[i].op) {
+            .SPLITMIX_STEP, .MUM, .ADD_ROT, .BSWAP => n += 1,
+            else => {},
+        }
+    }
+    return n;
+}
+
 // CALL_LIB recursion bound. SA produces programs with multiple CALL_LIB
 // ops; combined with deep chains, the worst-case nested execute() can
 // blow the stack. 8 levels is more than enough for legitimate
@@ -200,11 +243,34 @@ pub fn evaluateQuality(p: Program) Quality {
     const bal = balanceFn(p);
     const per = periodEst(p, 0x7E57_0001);
     const cs = chiSqFn(p);
-    const av_err = @abs(av - 32.0);
-    const bal_err = @abs(bal - 32.0);
-    const per_s = @as(f64, @floatFromInt(per)) / @as(f64, @floatFromInt(PeriodSamples));
-    const cs_pen = if (cs > 255.0) (cs - 255.0) / 100.0 else 0.0;
-    const composite = -10.0 * av_err - 5.0 * bal_err + 50.0 * per_s - cs_pen - @as(f64, @floatFromInt(p.used)) * 0.5;
+
+    const base_composite = if (!compressor_mode) blk_mix: {
+        // Mixer fitness: penalize divergence from uniform / high-entropy.
+        const av_err = @abs(av - 32.0);
+        const bal_err = @abs(bal - 32.0);
+        const per_s = @as(f64, @floatFromInt(per)) / @as(f64, @floatFromInt(PeriodSamples));
+        const cs_pen = if (cs > 255.0) (cs - 255.0) / 100.0 else 0.0;
+        break :blk_mix -10.0 * av_err - 5.0 * bal_err + 50.0 * per_s - cs_pen - @as(f64, @floatFromInt(p.used)) * 0.5;
+    } else blk_comp: {
+        // Compressor fitness: reward LOW avalanche (similar inputs →
+        // similar outputs) and HIGH chi-square (non-uniform output =
+        // collisions / buckets). Penalize trivially constant programs
+        // by requiring some variance, gated via balance distance from
+        // 0 OR 64 (degenerate). Keeps length penalty.
+        const low_av_reward: f64 = 10.0 * @max(@as(f64, 0.0), @as(f64, 32.0) - av);
+        const high_cs_reward: f64 = std.math.log2(@max(@as(f64, 1.0), cs));
+        const bal_dist_low: f64 = @abs(bal - @as(f64, 0.0));
+        const bal_dist_high: f64 = @abs(bal - @as(f64, 64.0));
+        const bal_dist_from_edge: f64 = @min(bal_dist_low, bal_dist_high);
+        const trivial_pen: f64 = if (bal_dist_from_edge < 4.0) 50.0 else 0.0;
+        break :blk_comp low_av_reward + 5.0 * high_cs_reward - trivial_pen - @as(f64, @floatFromInt(p.used)) * 0.5;
+    };
+
+    const ah_pen: f64 = if (anti_human_penalty != 0)
+        anti_human_penalty * @as(f64, @floatFromInt(humanNamedOpCount(p)))
+    else
+        0;
+    const composite = base_composite - ah_pen;
     return .{ .avalanche = av, .balance = bal, .period = per, .chisq = cs, .composite = composite };
 }
 
