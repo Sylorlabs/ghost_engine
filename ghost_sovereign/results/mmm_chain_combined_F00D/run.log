@@ -1,0 +1,20 @@
+=== TIER-2 CHAIN RUNNER (MMMP) ===
+generations=4 tier2_iters=20 mmm_outer_iters=8 tier1_outer_iters=8 tier0_inner_steps=120 root_seed=0xF00DBEEFCAFEFACE shaped_fitness=true constrained_init=true
+seeded mm_library[0] = results/mm_chain_1111222233334444/gen_0_champion_meta_meta.csv  (10 instrs)
+seeded mm_library[1] = results/mm_chain_1111222233334444/gen_1_champion_meta_meta.csv  (7 instrs)
+seeded mm_library[2] = results/mm_chain_1111222233334444/gen_2_champion_meta_meta.csv  (14 instrs)
+seeded mm_library[3] = results/mm_chain_1111222233334444/gen_3_champion_meta_meta.csv  (11 instrs)
+
+--- generation 0 | chain_extras_mm_len=4 ---
+  init pool best anchor-mean q=43.2667
+  gen 0: accepted=0/20 anchor_mean=43.2667 holdout=-48.6847 mmm_evals=116
+verdict: ADVANCE  (holdout -48.6847 vs prev 0.0000)
+
+--- generation 1 | chain_extras_mm_len=5 ---
+  init pool best anchor-mean q=43.6735
+  gen 1: accepted=0/20 anchor_mean=43.6735 holdout=-10764.6875 mmm_evals=124
+verdict: HALT(holdout_regression)  (holdout -10764.6875 vs prev -48.6847)
+
+=== CHAIN RESULT ===
+HALTED at generation 1
+STRICT_DOMINATION ever observed: NO

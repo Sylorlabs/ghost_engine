@@ -23,13 +23,22 @@ const FuncSamples = 1024;
 const Op = enum(u4) {
     XOR = 0, ADD = 1, MUL = 2, ROTL = 3, SHL_XOR = 4, SHR_XOR = 5,
     SPLITMIX_STEP = 6, ADD_CONST = 7, AND_NOT = 8, OR_SHIFT = 9,
-    // CALL_LIB(imm) executes chain_extras[imm % chain_extras.len] on
-    // regs[src1]. When chain_extras is empty, randomInstr never emits
-    // CALL_LIB and execute treats it as a pass-through. This is the
-    // successor-engine mechanism: gen n+1's search composes prior
-    // champions as atomic operators, not just as gate constraints.
     CALL_LIB = 10,
+    // 2026-05-21 expansion: opcodes 11..14 — additional u64-mixing
+    // primitives proposed to break the 44.30 fitness ceiling.
+    ROTR = 11,      // rotate-right by imm bits (complement to ROTL).
+    BSWAP = 12,     // byte-swap of regs[src1] (single-source).
+    MUM = 13,       // wyhash core: (a*b) then xor of low and high u64
+                    // halves of the u128 result.
+    ADD_ROT = 14,   // (a +% b) rotated left by imm bits — combined
+                    // accumulate-and-mix in one instruction.
 };
+
+// Opcode count used by randomInstr — must match enum cardinality.
+// 10 base + 4 expansion = 14 mixing ops. +1 for CALL_LIB when library
+// is populated. Keep at 14/15 (u4 max is 16).
+const ExpandedMixingOps: u64 = 14;
+const ExpandedMixingOpsWithLib: u64 = 15;
 
 pub const MaxChainExtras: usize = 16;
 pub var chain_extras: std.BoundedArray(Program, MaxChainExtras) = .{ .buffer = undefined, .len = 0 };
@@ -88,9 +97,6 @@ pub const Program = struct {
                 .AND_NOT => a & ~b,
                 .OR_SHIFT => a | (b >> @as(u6, @intCast(inst.imm % 63 + 1))),
                 .CALL_LIB => blk: {
-                    // Defensive: empty chain_extras => pass-through.
-                    // Recursion guard: past MaxCallLibDepth, also pass
-                    // through. Without this the chain segfaults at gen 2.
                     if (chain_extras.len == 0) break :blk a;
                     if (call_lib_depth >= MaxCallLibDepth) break :blk a;
                     call_lib_depth += 1;
@@ -98,6 +104,15 @@ pub const Program = struct {
                     const idx: usize = @intCast(inst.imm % chain_extras.len);
                     break :blk chain_extras.buffer[idx].execute(a);
                 },
+                .ROTR => std.math.rotr(u64, a, @as(u6, @intCast(inst.imm % 63 + 1))),
+                .BSWAP => @byteSwap(a),
+                .MUM => blk: {
+                    const prod: u128 = @as(u128, a) *% @as(u128, b | 1);
+                    const lo: u64 = @truncate(prod);
+                    const hi: u64 = @truncate(prod >> 64);
+                    break :blk lo ^ hi;
+                },
+                .ADD_ROT => std.math.rotl(u64, a +% b, @as(u6, @intCast(inst.imm % 63 + 1))),
             };
             regs[inst.dst] = result;
         }
@@ -401,10 +416,18 @@ pub fn isReachable(r: ReachabilityResult) bool { return r.reachable; }
 // --- Mutation / crossover / random init ---
 fn randomInstr(rng: *u64) Instruction {
     rng.* = engine.smix(rng.*);
-    // Expand op range to include CALL_LIB only when chain_extras is
-    // populated. Keeps base general_inventor behavior unchanged.
-    const n_ops: u64 = if (chain_extras.len > 0) 11 else 10;
-    const op_idx: u4 = @intCast(rng.* % n_ops);
+    // The 4 expansion ops (ROTR, BSWAP, MUM, ADD_ROT) are always live.
+    // CALL_LIB only when chain_extras is populated. With expansion:
+    // 14 mixing ops base, 15 with library. Pre-expansion was 10/11.
+    const n_ops: u64 = if (chain_extras.len > 0) ExpandedMixingOpsWithLib else ExpandedMixingOps;
+    var op_id: u64 = rng.* % n_ops;
+    // Skip enum index 10 (CALL_LIB) when picking from base set so the
+    // remapping stays contiguous with the enum's @intFromEnum order.
+    // Enum order is 0..10 base+CALL_LIB, 11..14 expansion. If we draw
+    // a base op (<10), keep id. If draw >= 10 in base mode, shift to
+    // 11..14 (skip CALL_LIB).
+    if (chain_extras.len == 0 and op_id >= 10) op_id += 1;
+    const op_idx: u4 = @intCast(op_id);
     rng.* = engine.smix(rng.*);
     const dst: u3 = @intCast(rng.* % NumRegs);
     rng.* = engine.smix(rng.*);
@@ -477,6 +500,7 @@ fn opName(op: Op) []const u8 {
         .SHL_XOR => "SHL_XOR", .SHR_XOR => "SHR_XOR", .SPLITMIX_STEP => "SPLITMIX_STEP",
         .ADD_CONST => "ADD_CONST", .AND_NOT => "AND_NOT", .OR_SHIFT => "OR_SHIFT",
         .CALL_LIB => "CALL_LIB",
+        .ROTR => "ROTR", .BSWAP => "BSWAP", .MUM => "MUM", .ADD_ROT => "ADD_ROT",
     };
 }
 

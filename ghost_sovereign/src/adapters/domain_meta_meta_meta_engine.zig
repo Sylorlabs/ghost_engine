@@ -32,6 +32,13 @@ pub fn chainExtrasMMReset() void { chain_extras_mm.len = 0; }
 pub fn chainExtrasMMAppend(p: mm.MetaMetaProgram) !void { try chain_extras_mm.append(p); }
 pub fn chainExtrasMMLen() usize { return chain_extras_mm.len; }
 
+// When true, the chain runner's init pool generates MMMPs that begin
+// with INIT_MM_CUR → EVAL_MM_CUR → ACCEPT_MM_IF_BETTER (the analog of
+// "init, evaluate, accept" — a minimal valid search loop). The rest of
+// the MMMP is random. Guarantees the init population isn't sentinel-
+// dominated. (Approach #5 of the 2026-05-21 invention-engine round.)
+pub var constrained_init: bool = false;
+
 pub const MetaMetaMetaOp = enum(u4) {
     INIT_MM_CUR = 0,
     MUTATE_MM_CUR = 1,
@@ -234,6 +241,13 @@ pub fn randomMetaMetaMetaProgram(rng: *u64) MetaMetaMetaProgram {
     var p = MetaMetaMetaProgram{ .instructions = undefined, .used = len };
     var i: usize = 0;
     while (i < len) : (i += 1) p.instructions[i] = randomMetaMetaMetaInstr(rng);
+    if (constrained_init and len >= 3) {
+        // Hard-seed the first 3 ops as INIT, EVAL, ACCEPT to guarantee
+        // a valid search loop. Remaining ops stay random.
+        p.instructions[0] = .{ .op = .INIT_MM_CUR,        .dst = 0, .src1 = 0, .src2 = 0 };
+        p.instructions[1] = .{ .op = .EVAL_MM_CUR,        .dst = 0, .src1 = 0, .src2 = 0 };
+        p.instructions[2] = .{ .op = .ACCEPT_MM_IF_BETTER,.dst = 0, .src1 = 0, .src2 = 0 };
+    }
     return p;
 }
 

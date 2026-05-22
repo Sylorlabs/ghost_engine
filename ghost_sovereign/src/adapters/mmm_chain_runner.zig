@@ -28,6 +28,42 @@ fn smix(x: u64) u64 {
     return z ^ (z >> 31);
 }
 
+// Load a MetaMetaProgram CSV produced by mm.metaMetaToCsv.
+// Format: idx,op_id,op_name,dst,src1,src2
+fn loadMetaMetaProgramCsv(allocator: std.mem.Allocator, path: []const u8) !mm.MetaMetaProgram {
+    const file = try std.fs.cwd().openFile(path, .{});
+    defer file.close();
+    const contents = try file.readToEndAlloc(allocator, 1 << 20);
+    defer allocator.free(contents);
+
+    var p = mm.MetaMetaProgram{ .instructions = undefined, .used = 0 };
+    var lines = std.mem.tokenizeAny(u8, contents, "\n\r");
+    var first = true;
+    while (lines.next()) |line| {
+        if (first) { first = false; continue; }
+        var fields = std.mem.tokenizeAny(u8, line, ",");
+        _ = fields.next() orelse continue; // idx
+        const op_id_s = fields.next() orelse continue;
+        _ = fields.next() orelse continue; // op_name
+        const dst_s = fields.next() orelse continue;
+        const src1_s = fields.next() orelse continue;
+        const src2_s = fields.next() orelse continue;
+        const op_id = try std.fmt.parseInt(u8, op_id_s, 10);
+        const dst = try std.fmt.parseInt(u8, dst_s, 10);
+        const src1 = try std.fmt.parseInt(u8, src1_s, 10);
+        const src2 = try std.fmt.parseInt(u8, src2_s, 10);
+        p.instructions[p.used] = .{
+            .op = @enumFromInt(op_id),
+            .dst = @intCast(dst),
+            .src1 = @intCast(src1),
+            .src2 = @intCast(src2),
+        };
+        p.used += 1;
+        if (p.used >= mm.MaxMetaMetaLen) break;
+    }
+    return p;
+}
+
 // Anchor seeds for Tier-2 outer search.
 const tier2_anchor_seeds = [_]u64{
     0xC0C0_C0C0_F00D_0001,
@@ -200,6 +236,9 @@ pub fn main() !void {
     var tier0_inner_steps: u32 = 100;
     var root_seed: u64 = 0x1111_2222_3333_4444;
     var out_subdir: []const u8 = "mmm_chain";
+    var seed_mm_library: []const u8 = "";
+    var shaped_fitness: bool = false;
+    var constrained_init: bool = false;
 
     while (args.next()) |arg| {
         if (std.mem.startsWith(u8, arg, "--generations=")) {
@@ -216,17 +255,34 @@ pub fn main() !void {
             root_seed = try std.fmt.parseInt(u64, arg["--seed=".len..], 16);
         } else if (std.mem.startsWith(u8, arg, "--out-subdir=")) {
             out_subdir = arg["--out-subdir=".len..];
+        } else if (std.mem.startsWith(u8, arg, "--seed-mm-library=")) {
+            seed_mm_library = arg["--seed-mm-library=".len..];
+        } else if (std.mem.eql(u8, arg, "--shaped-fitness")) {
+            shaped_fitness = true;
+        } else if (std.mem.eql(u8, arg, "--constrained-init")) {
+            constrained_init = true;
         }
     }
+    mm.shaped_fitness = shaped_fitness;
+    mmm.constrained_init = constrained_init;
 
     const stdout = std.io.getStdOut().writer();
     try stdout.print("=== TIER-2 CHAIN RUNNER (MMMP) ===\n", .{});
-    try stdout.print("generations={d} tier2_iters={d} mmm_outer_iters={d} tier1_outer_iters={d} tier0_inner_steps={d} root_seed=0x{X}\n", .{
-        generations, tier2_iters, mmm_outer_iters, tier1_outer_iters, tier0_inner_steps, root_seed,
+    try stdout.print("generations={d} tier2_iters={d} mmm_outer_iters={d} tier1_outer_iters={d} tier0_inner_steps={d} root_seed=0x{X} shaped_fitness={} constrained_init={}\n", .{
+        generations, tier2_iters, mmm_outer_iters, tier1_outer_iters, tier0_inner_steps, root_seed, shaped_fitness, constrained_init,
     });
 
     mm.chainExtrasReset();
     mmm.chainExtrasMMReset();
+
+    if (seed_mm_library.len > 0) {
+        var parts = std.mem.tokenizeAny(u8, seed_mm_library, ",");
+        while (parts.next()) |p| {
+            const mm_prog = try loadMetaMetaProgramCsv(allocator, p);
+            try mmm.chainExtrasMMAppend(mm_prog);
+            try stdout.print("seeded mm_library[{d}] = {s}  ({d} instrs)\n", .{ mmm.chainExtrasMMLen() - 1, p, mm_prog.used });
+        }
+    }
 
     var dir_buf: [128]u8 = undefined;
     const out_dir = try std.fmt.bufPrint(&dir_buf, "results/{s}", .{out_subdir});

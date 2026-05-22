@@ -48,6 +48,52 @@ pub fn chainExtrasLen() usize { return chain_extras.len; }
 // Opt-in (default false) so existing memory reproductions are unchanged.
 pub var wide_call_meta: bool = false;
 
+// Shaped fitness for Tier-2 (Approach #4 of 2026-05-21 invention-engine
+// round). When true, run() returns a structural-validity score in
+// [-1e5, 0] instead of sentinel -1e6 when no EVAL_META_CUR fires. This
+// gives Tier-2 a learnable gradient over MMPs that fail to evaluate:
+// programs with EVAL_META_CUR score higher than those without; programs
+// where EVAL comes before ACCEPT score higher than the reverse.
+//
+// Default false so Tier-1 chain runner results stay reproducible.
+// Tier-2 (mmm_chain_runner) enables it via --shaped-fitness flag.
+pub var shaped_fitness: bool = false;
+
+fn shapedScore(mm_prog: MetaMetaProgram) f64 {
+    var score: f64 = -1.0e5;
+    var has_init_meta: bool = false;
+    var has_eval_meta: bool = false;
+    var has_accept_meta: bool = false;
+    var first_eval_meta: i32 = -1;
+    var first_accept_meta: i32 = -1;
+    var n_evals: u32 = 0;
+    var i: usize = 0;
+    while (i < mm_prog.used) : (i += 1) {
+        const op = mm_prog.instructions[i].op;
+        switch (op) {
+            .INIT_META_CUR => has_init_meta = true,
+            .EVAL_META_CUR => {
+                has_eval_meta = true;
+                n_evals += 1;
+                if (first_eval_meta == -1) first_eval_meta = @intCast(i);
+            },
+            .ACCEPT_META_IF_BETTER, .ACCEPT_META_SA => {
+                has_accept_meta = true;
+                if (first_accept_meta == -1) first_accept_meta = @intCast(i);
+            },
+            else => {},
+        }
+    }
+    if (has_eval_meta) score += 1.0e3;
+    if (has_init_meta) score += 100.0;
+    if (has_accept_meta) score += 100.0;
+    if (first_eval_meta >= 0 and first_accept_meta >= 0 and first_eval_meta < first_accept_meta) {
+        score += 500.0;
+    }
+    score += @as(f64, @floatFromInt(n_evals)) * 50.0;
+    return score;
+}
+
 pub const MetaMetaOp = enum(u4) {
     INIT_META_CUR = 0,         // meta_cur := randomMetaProgram(rng); q_cur := -inf
     MUTATE_META_CUR = 1,       // meta_cur := mutateMeta(meta_cur, rng)
@@ -135,6 +181,7 @@ pub fn run(mm: MetaMetaProgram, outer_steps: u32, root_seed: u64) f64 {
             execOp(&st, mm.instructions[i]);
         }
     }
+    if (shaped_fitness and st.q_best == NegInf) return shapedScore(mm);
     return st.q_best;
 }
 
@@ -157,7 +204,11 @@ pub fn runReturningChampion(mm: MetaMetaProgram, outer_steps: u32, root_seed: u6
         var i: usize = 0;
         while (i < mm.used) : (i += 1) execOp(&st, mm.instructions[i]);
     }
-    return .{ .q_best = st.q_best, .meta_best = st.meta_best };
+    const reported_q: f64 = if (shaped_fitness and st.q_best == NegInf)
+        shapedScore(mm)
+    else
+        st.q_best;
+    return .{ .q_best = reported_q, .meta_best = st.meta_best };
 }
 
 fn execOp(st: *InnerState, ins: MetaMetaInstr) void {

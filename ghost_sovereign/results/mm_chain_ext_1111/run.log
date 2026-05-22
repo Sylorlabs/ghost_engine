@@ -1,0 +1,28 @@
+=== TIER-1 CHAIN RUNNER ===
+generations=5 tier1_iters=24 mm_outer_iters=12 tier0_inner_steps=150 root_seed=0x1111222233334444 wide_call_meta=false
+
+--- generation 0 | chain_extras_len=0 ---
+  init pool best anchor-mean q=-34.7754
+  iter 0 accepted anchor=43.6316
+  gen 0: accepted=1/24 anchor_mean=43.6316 holdout=-2774.2247 mm_evals=188
+verdict: ADVANCE  (holdout -2774.2247 vs prev 0.0000)
+
+--- generation 1 | chain_extras_len=1 ---
+  init pool best anchor-mean q=47.2882
+  gen 1: accepted=0/24 anchor_mean=47.2882 holdout=-2774.2247 mm_evals=188
+verdict: ADVANCE(tie)  (holdout -2774.2247 vs prev -2774.2247)
+
+--- generation 2 | chain_extras_len=2 ---
+  init pool best anchor-mean q=47.3250
+  iter 5 accepted anchor=47.4291
+  gen 2: accepted=1/24 anchor_mean=47.4291 holdout=-30.3923 mm_evals=192
+verdict: ADVANCE + STRICT_DOMINATION  (holdout -30.3923 vs prev -2774.2247)
+
+--- generation 3 | chain_extras_len=3 ---
+  init pool best anchor-mean q=47.7620
+  gen 3: accepted=0/24 anchor_mean=47.7620 holdout=-1384.8607 mm_evals=192
+verdict: HALT(holdout_regression)  (holdout -1384.8607 vs prev -30.3923)
+
+=== CHAIN RESULT ===
+HALTED at generation 3
+STRICT_DOMINATION ever observed: YES

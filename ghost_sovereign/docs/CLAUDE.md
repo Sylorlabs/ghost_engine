@@ -254,13 +254,26 @@ comparison across all tiers.
 - **Bigger budget (200 iters)**: **REFUTED.** All 4 seeds get worse
   holdout. The 4-anchor generalization protection has a budget-
   dependent failure mode. **24 iters is the correct operating point.**
-- **Tier-2 MMMP**: Built and runs. Shows progressive learning
+- **Tier-2 MMMP** v1: Built and runs. Shows progressive learning
   (sentinel → finite anchor → STRICT_DOMINATION → right primitives
   wrong order) but holdout is -10,813 — 5 orders of magnitude worse
   than Tier-1's 44.30. Not yet competitive.
+- **Tier-2 MMMP** v2 (combined: shaped fitness + curriculum + constrained
+  init + expanded opcodes): Best holdout **+23.30** (0x1111 gen 2,
+  STRICT_DOMINATION). First positive Tier-2 holdout ever. 6+ orders of
+  magnitude better than v1's -1e6 sentinel, but still ~21 holdout
+  units below Tier-1's 44.30 ceiling and ~5 below the hand-coded
+  baseline 28.13. The four-tier successor recursion approaches Tier-1
+  but does NOT exceed it at single-machine budgets.
+- **Expanded Tier-0 opcodes** (Approach #1 of v2 round): added ROTR,
+  BSWAP, MUM, ADD_ROT (10 → 14 ops). Re-run 4 Tier-1 chains at original
+  24-iter budget: best new holdout 37.26 (F00D ext). NONE of 4 chains
+  broke 44.30 — expanded opcodes alone don't raise the ceiling. The
+  ceiling is **budget × opcode-set interaction**.
 - **44.30 ceiling**: Reproduced across multiple seeds and recipes.
-  Appears to be a property of (Tier-0 opcode set + budget), not a
-  seed fluke. Breaking it likely requires expanding Tier-0 primitives.
+  Property of the budget × opcode-set interaction, not a seed fluke
+  or tier-depth limitation. v2 round refutes "more tiers" as a way
+  to escape it.
 
 ### Key files
 
@@ -274,21 +287,33 @@ comparison across all tiers.
 | `src/adapters/champion_holdout_validation.zig` | 64-seed holdout validator |
 | `docs/tier1_meta_engine.md` | Tier-1 detailed findings |
 | `docs/tier2_meta_meta_engine.md` | Tier-2 detailed findings |
-| `docs/successor_loop_research.md` | Complete research round (all 3 tests) |
+| `docs/successor_loop_research.md` | v1 research round (3 tests) |
+| `docs/invention_engine_v2.md` | v2 research round (5 approaches, final verdict) |
 | `results/mm_chain_*/` | Tier-1 experiment data |
+| `results/mm_chain_ext_*/` | v2 expanded-opcodes chain data |
 | `results/mmm_chain_*/` | Tier-2 experiment data |
+| `results/mmm_chain_combined_*/` | v2 combined Tier-2 data |
 
 ### Operational warnings
 
 - **Do NOT increase tier1_iters past 24** without also increasing
   anchor count. The search will overfit the 4 anchor seeds.
 - **Use `--wide-call-meta`** when seed-library has >4 entries.
-- **Tier-2 is research-only.** It runs but doesn't produce competitive
-  results. Don't report it as "working" — report it as "implemented,
-  shows learning progression, not yet competitive."
+- **Tier-2 is research-only.** Even with all 4 v2 enhancements
+  (shaped fitness, curriculum seed, constrained init, expanded
+  opcodes) Tier-2's best holdout is -48.68 vs Tier-1's +44.30.
+  Don't report it as "working" — report it as "implemented,
+  responsive to engineering, not competitive with Tier-1."
+- **Expanded Tier-0 opcodes are available but NOT a free win.** ROTR,
+  BSWAP, MUM, ADD_ROT increase variance; at fixed 24-iter budget,
+  some seeds gain, others lose. Use only with explicit budget tuning.
 - **Always use the disciplined baseline** (anchor protection + seed
   rotation) for comparisons. Undisciplined baselines overfit and make
   Tier-1 look artificially good.
+- **The 44.30 ceiling appears domain-bounded.** Five approaches
+  (bigger budget, wide CALL_META, Tier-2, expanded opcodes, combined
+  Tier-2) all failed to break it. Likely path forward: different
+  scoring axis or different domain entirely.
 
 ---
 
