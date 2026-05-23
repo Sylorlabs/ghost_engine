@@ -1,0 +1,28 @@
+=== MMMP HOLDOUT HILLCLIMB ===
+iters=24 seed=0xF00DCAFE12345678 start=(random) mmm_outer=6 tier1_outer=8 tier0_inner=150 shaped=false constrained=true constrained_meta=true constrained_mm=true wide_meta=true wide_mm=true restart_every=0
+iter 0: anchor=-160.6565 holdout=-233.1175 BEST
+iter 1/24: anchor=-187.6373 holdout=-215.2252 current=-215.2252 best=-215.2252 ACCEPT BEST
+iter 2/24: anchor=-187.6373 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 3/24: anchor=-174.7471 holdout=-236.8201 current=-215.2252 best=-215.2252 
+iter 4/24: anchor=-205.1228 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 5/24: anchor=-187.6373 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 6/24: anchor=-187.6373 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 7/24: anchor=-190.6418 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 8/24: anchor=-187.6373 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 9/24: anchor=-187.9471 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 10/24: anchor=-189.7909 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 11/24: anchor=-187.6373 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 12/24: anchor=-187.6373 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 13/24: anchor=-187.6373 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 14/24: anchor=-187.6373 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 15/24: anchor=-187.6373 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 16/24: anchor=-160.6565 holdout=-233.1175 current=-215.2252 best=-215.2252 
+iter 17/24: anchor=-189.7909 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 18/24: anchor=-187.6373 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 19/24: anchor=-187.6373 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 20/24: anchor=-160.6565 holdout=-233.1175 current=-215.2252 best=-215.2252 
+iter 21/24: anchor=-205.1228 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 22/24: anchor=-160.6565 holdout=-233.1175 current=-215.2252 best=-215.2252 
+iter 23/24: anchor=-187.6373 holdout=-215.2252 current=-215.2252 best=-215.2252 
+iter 24/24: anchor=-181.2499 holdout=-239.4530 current=-215.2252 best=-215.2252 
+BEST_HOLDOUT = -215.2252 iter=1 anchor=-187.6373

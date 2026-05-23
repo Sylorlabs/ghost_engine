@@ -74,6 +74,19 @@ pub var anti_human_penalty: f64 = 0;
 // should look structurally different from mixers. Off by default.
 pub var compressor_mode: bool = false;
 
+// Exp2 (2026-05-23) Approach-B runtime flag: ban MUL/MUM/SPLITMIX_STEP/CALL_LIB
+// so the inner search uses only the 11 carry/shift/logic ops. Must produce
+// byte-identical search trajectories to the comptime approach-A binary
+// (domain_u64_mixer_mulfree_compat.zig) on the same seed.
+pub var ban_mul_family: bool = false;
+
+// Allowed ops under the MUL-free constraint — same order as
+// domain_u64_mixer_mulfree.zig allowedOps(.mul_free) for byte equivalence.
+const MulFreeOps = [_]Op{
+    .XOR, .ADD, .ROTL, .SHL_XOR, .SHR_XOR, .ADD_CONST,
+    .AND_NOT, .OR_SHIFT, .ROTR, .BSWAP, .ADD_ROT,
+};
+
 fn humanNamedOpCount(p: Program) u32 {
     var n: u32 = 0;
     var i: usize = 0;
@@ -482,18 +495,22 @@ pub fn isReachable(r: ReachabilityResult) bool { return r.reachable; }
 // --- Mutation / crossover / random init ---
 fn randomInstr(rng: *u64) Instruction {
     rng.* = engine.smix(rng.*);
-    // The 4 expansion ops (ROTR, BSWAP, MUM, ADD_ROT) are always live.
-    // CALL_LIB only when chain_extras is populated. With expansion:
-    // 14 mixing ops base, 15 with library. Pre-expansion was 10/11.
-    const n_ops: u64 = if (chain_extras.len > 0) ExpandedMixingOpsWithLib else ExpandedMixingOps;
-    var op_id: u64 = rng.* % n_ops;
-    // Skip enum index 10 (CALL_LIB) when picking from base set so the
-    // remapping stays contiguous with the enum's @intFromEnum order.
-    // Enum order is 0..10 base+CALL_LIB, 11..14 expansion. If we draw
-    // a base op (<10), keep id. If draw >= 10 in base mode, shift to
-    // 11..14 (skip CALL_LIB).
-    if (chain_extras.len == 0 and op_id >= 10) op_id += 1;
-    const op_idx: u4 = @intCast(op_id);
+    const op: Op = if (ban_mul_family) blk: {
+        // Approach-B runtime MUL-free path. Same 11-op list and rng%11
+        // selection as domain_u64_mixer_mulfree_compat.zig for byte-identical
+        // search trajectories on matching seeds.
+        break :blk MulFreeOps[@intCast(rng.* % MulFreeOps.len)];
+    } else blk: {
+        // The 4 expansion ops (ROTR, BSWAP, MUM, ADD_ROT) are always live.
+        // CALL_LIB only when chain_extras is populated. With expansion:
+        // 14 mixing ops base, 15 with library. Pre-expansion was 10/11.
+        const n_ops: u64 = if (chain_extras.len > 0) ExpandedMixingOpsWithLib else ExpandedMixingOps;
+        var op_id: u64 = rng.* % n_ops;
+        // Skip enum index 10 (CALL_LIB) when picking from base set so the
+        // remapping stays contiguous with the enum's @intFromEnum order.
+        if (chain_extras.len == 0 and op_id >= 10) op_id += 1;
+        break :blk @enumFromInt(@as(u4, @intCast(op_id)));
+    };
     rng.* = engine.smix(rng.*);
     const dst: u3 = @intCast(rng.* % NumRegs);
     rng.* = engine.smix(rng.*);
@@ -501,7 +518,7 @@ fn randomInstr(rng: *u64) Instruction {
     rng.* = engine.smix(rng.*);
     const src2: u3 = @intCast(rng.* % NumRegs);
     rng.* = engine.smix(rng.*);
-    return .{ .op = @enumFromInt(op_idx), .dst = dst, .src1 = src1, .src2 = src2, .imm = rng.* };
+    return .{ .op = op, .dst = dst, .src1 = src1, .src2 = src2, .imm = rng.* };
 }
 
 pub fn randomProgram(rng: *u64) Program {

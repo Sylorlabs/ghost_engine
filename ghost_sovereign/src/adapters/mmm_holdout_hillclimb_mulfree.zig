@@ -1,8 +1,8 @@
 const std = @import("std");
-const mmm = @import("domain_meta_meta_meta_engine.zig");
-const mm = @import("domain_meta_meta_engine.zig");
-const tier0 = @import("domain_meta_engine.zig");
-const mixer = @import("domain_u64_mixer.zig");
+const mmm = @import("domain_meta_meta_meta_engine_mulfree.zig");
+const mm = @import("domain_meta_meta_engine_mulfree.zig");
+const tier0 = @import("domain_meta_engine_mulfree.zig");
+const mixer = @import("domain_u64_mixer_mulfree_compat.zig");
 
 const anchor_seeds = [_]u64{
     0xC0C0_C0C0_F00D_0001,
@@ -198,7 +198,6 @@ pub fn main() !void {
     var repair_meta_ordering = false;
     var restart_every: u32 = 0;
     var anti_human_penalty: f64 = 0;
-    var ban_mul_family = false;
 
     while (args.next()) |arg| {
         if (std.mem.startsWith(u8, arg, "--iters=")) {
@@ -239,12 +238,9 @@ pub fn main() !void {
             mixer.compressor_mode = true;
         } else if (std.mem.eql(u8, arg, "--live-macro-graduation")) {
             mixer.live_macro_graduation = true;
-        } else if (std.mem.eql(u8, arg, "--ban-mul-family")) {
-            ban_mul_family = true;
         }
     }
 
-    mixer.ban_mul_family = ban_mul_family;
     mixer.anti_human_penalty = anti_human_penalty;
     mm.shaped_fitness = shaped_fitness;
     mm.wide_call_meta = wide_call_meta;

@@ -650,6 +650,24 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(mmm_holdout_hillclimb);
 
+    // Exp2: comptime mulfree meta-engine binary (approach A)
+    const mmm_holdout_hillclimb_mulfree = b.addExecutable(.{
+        .name = "mmm_holdout_hillclimb_mulfree",
+        .root_source_file = b.path("src/adapters/mmm_holdout_hillclimb_mulfree.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(mmm_holdout_hillclimb_mulfree);
+
+    // Exp2: export concrete mixer from a mulfree MetaProgram
+    const meta_mixer_export_mulfree = b.addExecutable(.{
+        .name = "meta_mixer_export_mulfree",
+        .root_source_file = b.path("src/adapters/meta_mixer_export_mulfree.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(meta_mixer_export_mulfree);
+
     const mmmm_qd_probe = b.addExecutable(.{
         .name = "mmmm_qd_probe",
         .root_source_file = b.path("src/adapters/mmmm_qd_probe.zig"),
