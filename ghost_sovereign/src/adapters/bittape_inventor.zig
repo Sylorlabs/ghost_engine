@@ -99,7 +99,7 @@ pub fn main() !void {
     var csv_file = try std.fs.cwd().createFile(csv_path, .{ .truncate = true });
     defer csv_file.close();
     const csv = csv_file.writer();
-    try csv.writeAll("generation,best_composite,best_avalanche,best_balance,best_period,best_chisq,best_used,mean_composite\n");
+    try csv.writeAll("generation,best_composite,best_avalanche,best_balance,best_period,best_chisq,best_min_pb,best_max_pb,best_bias_pb,best_used,mean_composite\n");
 
     const stdout = std.io.getStdOut().writer();
     try stdout.writeAll("=== BIT-TAPE INVENTOR ===\n");
@@ -120,9 +120,11 @@ pub fn main() !void {
     }
     sortDescByQuality(population);
 
-    try stdout.print("gen 0 init: best_composite={d:.4} avalanche={d:.2} balance={d:.2} chisq={d:.2} period={d} used={d}\n", .{
+    try stdout.print("gen 0 init: best_composite={d:.4} av={d:.2} min_pb={d:.4} max_pb={d:.4} bal={d:.2} chisq={d:.2} period={d} used={d}\n", .{
         population[0].quality.composite,
         population[0].quality.avalanche,
+        population[0].quality.min_pb,
+        population[0].quality.max_pb,
         population[0].quality.balance,
         population[0].quality.chisq,
         population[0].quality.period,
@@ -171,23 +173,28 @@ pub fn main() !void {
         for (population) |ind| sum += ind.quality.composite;
         const mean: f64 = sum / @as(f64, @floatFromInt(population.len));
 
-        try csv.print("{d},{d:.6},{d:.4},{d:.4},{d},{d:.4},{d},{d:.6}\n", .{
+        try csv.print("{d},{d:.6},{d:.4},{d:.4},{d},{d:.4},{d:.6},{d:.6},{d:.6},{d},{d:.6}\n", .{
             g + 1,
             population[0].quality.composite,
             population[0].quality.avalanche,
             population[0].quality.balance,
             population[0].quality.period,
             population[0].quality.chisq,
+            population[0].quality.min_pb,
+            population[0].quality.max_pb,
+            population[0].quality.bias_pb,
             population[0].program.used,
             mean,
         });
 
         if ((g + 1) % 10 == 0 or g == 0) {
-            try stdout.print("gen {d}/{d}: best_composite={d:.4} av={d:.2} bal={d:.2} chisq={d:.2} per={d} used={d} mean_comp={d:.2}\n", .{
+            try stdout.print("gen {d}/{d}: best_composite={d:.4} av={d:.2} min_pb={d:.4} max_pb={d:.4} bal={d:.2} chisq={d:.2} per={d} used={d} mean_comp={d:.2}\n", .{
                 g + 1,
                 generations,
                 population[0].quality.composite,
                 population[0].quality.avalanche,
+                population[0].quality.min_pb,
+                population[0].quality.max_pb,
                 population[0].quality.balance,
                 population[0].quality.chisq,
                 population[0].quality.period,
@@ -204,9 +211,11 @@ pub fn main() !void {
     defer best_file.close();
     try bt.programToCsv(best_ever.program, best_file.writer());
 
-    try stdout.print("=== FINAL ===\nBEST_COMPOSITE = {d:.4} avalanche={d:.4} balance={d:.4} chisq={d:.4} period={d} used={d}\n", .{
+    try stdout.print("=== FINAL ===\nBEST_COMPOSITE = {d:.4} avalanche={d:.4} min_pb={d:.4} max_pb={d:.4} balance={d:.4} chisq={d:.4} period={d} used={d}\n", .{
         best_ever.quality.composite,
         best_ever.quality.avalanche,
+        best_ever.quality.min_pb,
+        best_ever.quality.max_pb,
         best_ever.quality.balance,
         best_ever.quality.chisq,
         best_ever.quality.period,

@@ -124,8 +124,12 @@ fn rigorousPeriod(p: bt.Program, seed: u64) usize {
 /// skewed.
 fn perOutputBitAvalanche(p: bt.Program, out_min: *f64, out_max: *f64, out_mean: *f64) void {
     var per_bit: [64]f64 = [_]f64{0} ** 64;
-    var rng: u64 = 0xACE_F00D_BEEF_CAFE;
-    const samples = 128;
+    // INDEPENDENT of the search-time per-bit fitness: different seed and 4x
+    // the sample count (512 vs 128). The search optimizes min_pb on the
+    // 0xACE_F00D... samples; if it overfits that exact sample set, this
+    // check on a disjoint seed will reveal a worse min_bit_flip_frac.
+    var rng: u64 = 0xD1FF_5EED_2026_0523;
+    const samples = 512;
     var s: usize = 0;
     while (s < samples) : (s += 1) {
         rng = smix(rng);

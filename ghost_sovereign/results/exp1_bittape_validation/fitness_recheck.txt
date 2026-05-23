@@ -1,0 +1,45 @@
+# Exp1 bit-tape fitness fix — verification (2026-05-23)
+# Independent per-bit check: 512 samples, seed 0xD1FF5EED20260523 (disjoint from search fitness seed 0xACEF00DBEEFCAFE @128 samples)
+
+==================== s1 ====================
+=== RIGOROUS QUALITY (4x sample budget) ===
+program=results/exp1_bittape_s1/BEST_program.csv used=382
+rigorous_avalanche=32.000000 (target 32.0)
+rigorous_balance=32.214844 (target 32.0)
+rigorous_period=16384 / 16384 (max)
+rigorous_chisq=231.0000 (pass if <= 255)
+=== PER-OUTPUT-BIT AVALANCHE ===
+min_bit_flip_frac=0.500000 max_bit_flip_frac=0.500000 mean=0.500000 (target ~0.5)
+op_composition:
+     65 AND
+    116 NOT
+    201 XOR
+
+==================== s2 ====================
+=== RIGOROUS QUALITY (4x sample budget) ===
+program=results/exp1_bittape_s2/BEST_program.csv used=383
+rigorous_avalanche=32.053711 (target 32.0)
+rigorous_balance=32.084961 (target 32.0)
+rigorous_period=16384 / 16384 (max)
+rigorous_chisq=287.5000 (pass if <= 255)
+=== PER-OUTPUT-BIT AVALANCHE ===
+min_bit_flip_frac=0.483856 max_bit_flip_frac=0.500305 mean=0.498655 (target ~0.5)
+op_composition:
+     54 AND
+    139 NOT
+    190 XOR
+
+==================== s3 ====================
+=== RIGOROUS QUALITY (4x sample budget) ===
+program=results/exp1_bittape_s3/BEST_program.csv used=383
+rigorous_avalanche=32.000732 (target 32.0)
+rigorous_balance=31.973633 (target 32.0)
+rigorous_period=16384 / 16384 (max)
+rigorous_chisq=223.9063 (pass if <= 255)
+=== PER-OUTPUT-BIT AVALANCHE ===
+min_bit_flip_frac=0.500000 max_bit_flip_frac=0.500153 mean=0.500002 (target ~0.5)
+op_composition:
+     79 AND
+    133 NOT
+    171 XOR
+
