@@ -390,7 +390,7 @@ pub fn main() !void {
     _ = args.next();
 
     var source_path: []const u8 = "src/adapters/phase_lattice_inventor.zig";
-    var doc_path: []const u8 = "docs/phase_lattice_inventor.md";
+    var doc_path: []const u8 = "docs/research/phase_lattice_inventor.md";
     while (args.next()) |arg| {
         if (std.mem.startsWith(u8, arg, "--source=")) source_path = arg["--source=".len..] else if (std.mem.startsWith(u8, arg, "--doc=")) doc_path = arg["--doc=".len..];
     }

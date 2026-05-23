@@ -285,10 +285,10 @@ comparison across all tiers.
 | `src/adapters/meta_meta_chain_runner.zig` | Tier-1 chain runner (multi-gen, anchor-protected) |
 | `src/adapters/mmm_chain_runner.zig` | Tier-2 chain runner |
 | `src/adapters/champion_holdout_validation.zig` | 64-seed holdout validator |
-| `docs/tier1_meta_engine.md` | Tier-1 detailed findings |
-| `docs/tier2_meta_meta_engine.md` | Tier-2 detailed findings |
-| `docs/successor_loop_research.md` | v1 research round (3 tests) |
-| `docs/invention_engine_v2.md` | v2 research round (5 approaches, final verdict) |
+| `docs/research/tier1_meta_engine.md` | Tier-1 detailed findings |
+| `docs/research/tier2_meta_meta_engine.md` | Tier-2 detailed findings |
+| `docs/research/successor_loop_research.md` | v1 research round (3 tests) |
+| `docs/research/invention_engine_v2.md` | v2 research round (5 approaches, final verdict) |
 | `results/mm_chain_*/` | Tier-1 experiment data |
 | `results/mm_chain_ext_*/` | v2 expanded-opcodes chain data |
 | `results/mmm_chain_*/` | Tier-2 experiment data |
@@ -339,7 +339,7 @@ comparison across all tiers.
   mean **46.9838**. Engine 4 is now implemented
   (`domain_meta_meta_meta_meta_engine.zig`, `mmmm_qd_probe.zig`) but its
   bounded probes are not competitive yet (**38.4430** best observed). See
-  `docs/recursive_engine_phase_abc_2026_05_21.md`.
+  `docs/research/recursive_engine_phase_abc_2026_05_21.md`.
 
 ---
 

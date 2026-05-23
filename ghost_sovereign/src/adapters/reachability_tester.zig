@@ -242,7 +242,7 @@ fn candRandom(seed: u64) Program {
 }
 
 fn candDocumentedRun1() Program {
-    // Transcribed from docs/program_synthesis_inventor.md (Run 1).
+    // Transcribed from docs/research/program_synthesis_inventor.md (Run 1).
     // CAVEAT: the documented form uses placeholder "s" for shift amounts
     // and the engine does not currently persist discovered imm values to
     // disk. We pick plausible representative shifts (s=17, s=27) so the
