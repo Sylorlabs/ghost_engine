@@ -1,0 +1,30 @@
+=== MMMP HOLDOUT HILLCLIMB ===
+iters=100 seed=0xABCDEF0123456789 start=results/phaseB_mmm_qd_bootstrap_ABCD_64/BEST_champion_mmm.csv mmm_outer=6 tier1_outer=8 tier0_inner=120 shaped=true constrained=true constrained_meta=true constrained_mm=true wide_meta=true wide_mm=true restart_every=25
+iter 0: anchor=47.4611 holdout=46.8583 BEST
+iter 1/100: anchor=47.5911 holdout=19.6517 current=46.8583 best=46.8583 
+iter 2/100: anchor=47.5082 holdout=39.4742 current=46.8583 best=46.8583 
+iter 3/100: anchor=47.4203 holdout=21.1225 current=46.8583 best=46.8583 
+iter 4/100: anchor=47.4611 holdout=46.8583 current=46.8583 best=46.8583 
+iter 5/100: anchor=47.4611 holdout=46.8583 current=46.8583 best=46.8583 
+iter 6/100: anchor=47.4203 holdout=21.1225 current=46.8583 best=46.8583 
+iter 7/100: anchor=46.9806 holdout=39.5751 current=46.8583 best=46.8583 
+iter 8/100: anchor=47.6026 holdout=31.8104 current=46.8583 best=46.8583 
+iter 9/100: anchor=47.4611 holdout=46.8583 current=46.8583 best=46.8583 
+iter 10/100: anchor=47.4982 holdout=39.5751 current=46.8583 best=46.8583 
+iter 11/100: anchor=47.4611 holdout=46.8583 current=46.8583 best=46.8583 
+iter 12/100: anchor=47.4611 holdout=46.8583 current=46.8583 best=46.8583 
+iter 13/100: anchor=47.4611 holdout=46.8583 current=46.8583 best=46.8583 
+iter 14/100: anchor=47.3301 holdout=39.1565 current=46.8583 best=46.8583 
+iter 15/100: anchor=46.4231 holdout=38.2860 current=46.8583 best=46.8583 
+iter 16/100: anchor=47.4611 holdout=46.8583 current=46.8583 best=46.8583 
+iter 17/100: anchor=47.4203 holdout=21.1225 current=46.8583 best=46.8583 
+iter 18/100: anchor=47.5082 holdout=39.4742 current=46.8583 best=46.8583 
+iter 19/100: anchor=46.9806 holdout=39.5751 current=46.8583 best=46.8583 
+iter 20/100: anchor=47.4611 holdout=46.8583 current=46.8583 best=46.8583 
+iter 21/100: anchor=47.5947 holdout=39.4742 current=46.8583 best=46.8583 
+iter 22/100: anchor=47.3978 holdout=34.1306 current=46.8583 best=46.8583 
+iter 23/100: anchor=47.4611 holdout=46.8583 current=46.8583 best=46.8583 
+iter 24/100: anchor=47.4724 holdout=42.8739 current=46.8583 best=46.8583 
+iter 25/100: anchor=47.3325 holdout=39.4742 current=46.8583 best=46.8583 
+iter 26/100: anchor=47.4611 holdout=46.8583 current=46.8583 best=46.8583 
+iter 27/100: anchor=47.4611 holdout=46.8583 current=46.8583 best=46.8583 

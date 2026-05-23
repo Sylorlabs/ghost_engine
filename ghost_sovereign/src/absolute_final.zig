@@ -7,6 +7,9 @@ const vsa = @import("vsa");
 
 pub const AbsoluteCore = struct {
     pub const DefaultStatePath = "state/ghost_absolute.bin";
+    pub const DefaultTrainedHvPath = "state/trained_hv.bin";
+    pub const TrainedHvTableMagic: u64 = 0x3154425648534731;
+    pub const TrainedHvTableVersion: u32 = 1;
     // Manifold of 64-bit voxels (2^21 * 8 bytes = 16MB)
     pub const ManifoldSize = 2097152;
     pub const AddressMask = ManifoldSize - 1;
@@ -25,6 +28,33 @@ pub const AbsoluteCore = struct {
         dominant_edge: usize = 0,
         dominant_delta: u64 = 0,
         edge_fingerprint: u64 = 0xBE496F1695F15480,
+
+        pub fn absorb(self: *IngestReport, report: IngestReport) void {
+            self.bytes += report.bytes;
+            self.writes += report.writes;
+            if (report.dominant_delta > self.dominant_delta) {
+                self.dominant_delta = report.dominant_delta;
+                self.dominant_edge = report.dominant_edge;
+            }
+            self.edge_fingerprint = std.math.rotl(u64, self.edge_fingerprint ^ report.edge_fingerprint, 13);
+        }
+    };
+
+    pub const TrainedHvMode = enum(u32) {
+        legacy_word = 0,
+        word = 1,
+        ngram = 2,
+    };
+
+    pub const TrainedHvLoadInfo = struct {
+        path: []const u8,
+        loaded: bool,
+        mode: TrainedHvMode,
+        count: usize,
+        flags: u32,
+        checksum: u64,
+        expected_checksum: u64,
+        checksum_ok: bool,
     };
 
     field: []u64,
@@ -34,6 +64,13 @@ pub const AbsoluteCore = struct {
     kernel: u64 = 0xBE496F1695F15480,
     trained_hvs_loaded: bool = false,
     trained_hvs: ?std.AutoHashMap(u64, vsa.Hypervector) = null,
+    trained_hv_path: []const u8 = DefaultTrainedHvPath,
+    trained_hv_mode: TrainedHvMode = .legacy_word,
+    trained_hv_count: usize = 0,
+    trained_hv_flags: u32 = 0,
+    trained_hv_checksum: u64 = 0,
+    trained_hv_expected_checksum: u64 = 0,
+    trained_hv_checksum_ok: bool = false,
     allocator: std.mem.Allocator = std.heap.page_allocator,
 
     pub fn init(size_bytes: usize) !AbsoluteCore {
@@ -82,6 +119,7 @@ pub const AbsoluteCore = struct {
     }
 
     pub fn deinit(self: *AbsoluteCore) void {
+        if (self.trained_hvs) |*map| map.deinit();
         std.posix.munmap(@alignCast(std.mem.sliceAsBytes(self.field)));
         self.file.close();
     }
@@ -100,27 +138,86 @@ pub const AbsoluteCore = struct {
         _ = self.ingestMeasured(data);
     }
 
+    pub fn setTrainedHypervectorPath(self: *AbsoluteCore, path: []const u8) void {
+        if (self.trained_hvs) |*map| {
+            map.deinit();
+            self.trained_hvs = null;
+        }
+        self.trained_hv_path = path;
+        self.trained_hvs_loaded = false;
+        self.trained_hv_mode = .legacy_word;
+        self.trained_hv_count = 0;
+        self.trained_hv_flags = 0;
+        self.trained_hv_checksum = 0;
+        self.trained_hv_expected_checksum = 0;
+        self.trained_hv_checksum_ok = false;
+    }
+
+    pub fn trainedHypervectorInfo(self: *const AbsoluteCore) TrainedHvLoadInfo {
+        return .{
+            .path = self.trained_hv_path,
+            .loaded = self.trained_hvs_loaded and self.trained_hvs != null,
+            .mode = self.trained_hv_mode,
+            .count = self.trained_hv_count,
+            .flags = self.trained_hv_flags,
+            .checksum = self.trained_hv_checksum,
+            .expected_checksum = self.trained_hv_expected_checksum,
+            .checksum_ok = self.trained_hv_checksum_ok,
+        };
+    }
+
     pub fn loadTrainedHypervectors(self: *AbsoluteCore) void {
         if (self.trained_hvs_loaded) return;
         self.trained_hvs_loaded = true;
-        var file = std.fs.cwd().openFile("state/trained_hv.bin", .{}) catch blk: {
-            var child = std.process.Child.init(&[_][]const u8{
-                "./zig-out/bin/train_hypervectors",
-            }, self.allocator);
-            _ = child.spawnAndWait() catch return;
-            break :blk std.fs.cwd().openFile("state/trained_hv.bin", .{}) catch return;
-        };
+        var file = std.fs.cwd().openFile(self.trained_hv_path, .{}) catch return;
         defer file.close();
         var map = std.AutoHashMap(u64, vsa.Hypervector).init(self.allocator);
         var reader = file.reader();
-        while (true) {
-            const h = reader.readInt(u64, .little) catch break;
-            var hv = vsa.Hypervector.initEmpty();
-            for (&hv.data) |*w| {
-                w.* = reader.readInt(u64, .little) catch break;
+        const first = reader.readInt(u64, .little) catch return;
+        var checksum: u64 = 0;
+        var expected_checksum: u64 = 0;
+        var loaded: usize = 0;
+        if (first == TrainedHvTableMagic) {
+            const version = reader.readInt(u32, .little) catch return;
+            const raw_mode = reader.readInt(u32, .little) catch return;
+            const flags = reader.readInt(u32, .little) catch return;
+            _ = reader.readInt(u32, .little) catch return;
+            const expected_count = reader.readInt(u64, .little) catch return;
+            expected_checksum = reader.readInt(u64, .little) catch return;
+            if (version != TrainedHvTableVersion) return;
+            const mode: TrainedHvMode = switch (raw_mode) {
+                1 => .word,
+                2 => .ngram,
+                else => return,
+            };
+            checksum = checksumSeed(mode, expected_count);
+            while (loaded < expected_count) : (loaded += 1) {
+                const h = reader.readInt(u64, .little) catch break;
+                var hv = vsa.Hypervector.initEmpty();
+                for (&hv.data) |*w| w.* = reader.readInt(u64, .little) catch break;
+                map.put(h, hv) catch break;
+                checksum = checksumEntry(checksum, h, hv);
             }
-            map.put(h, hv) catch break;
+            self.trained_hv_mode = mode;
+            self.trained_hv_flags = flags;
+        } else {
+            file.seekTo(0) catch return;
+            checksum = splitMix64(0xA11CE5A11CE5A11C);
+            while (true) {
+                const h = reader.readInt(u64, .little) catch break;
+                var hv = vsa.Hypervector.initEmpty();
+                for (&hv.data) |*w| w.* = reader.readInt(u64, .little) catch break;
+                map.put(h, hv) catch break;
+                checksum = checksumEntry(checksum, h, hv);
+                loaded += 1;
+            }
+            self.trained_hv_mode = .legacy_word;
+            self.trained_hv_flags = 0;
         }
+        self.trained_hv_count = loaded;
+        self.trained_hv_checksum = checksum;
+        self.trained_hv_expected_checksum = expected_checksum;
+        self.trained_hv_checksum_ok = expected_checksum == 0 or checksum == expected_checksum;
         self.trained_hvs = map;
     }
 
@@ -130,37 +227,50 @@ pub const AbsoluteCore = struct {
         var it = std.mem.tokenizeAny(u8, text, " \t\r\n");
         while (it.next()) |word| {
             var clean_buf: [64]u8 = undefined;
-            var clean_len: usize = 0;
-            for (word) |c| {
-                const is_alpha = (c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z');
-                if (is_alpha) {
-                    if (clean_len < clean_buf.len) {
-                        clean_buf[clean_len] = if (c >= 'A' and c <= 'Z') c + 32 else c;
-                        clean_len += 1;
-                    }
-                }
-            }
-            const query_word = if (clean_len >= 2) clean_buf[0..clean_len] else word;
+            const query_word = cleanWord(word, &clean_buf);
+            if (query_word.len < 2) continue;
+            const hv = self.trainedVectorForWord(query_word) orelse vsa.Hypervector.initRandom(hashWord(query_word));
+            total.absorb(self.ingestMeasured(std.mem.sliceAsBytes(hv.data[0..])));
+        }
+        return total;
+    }
 
-            var hv: vsa.Hypervector = undefined;
-            if (self.trained_hvs) |map| {
-                if (map.get(hashWord(query_word))) |trained| {
-                    hv = trained;
-                } else {
-                    hv = vsa.Hypervector.initRandom(hashWord(word));
-                }
-            } else {
-                hv = vsa.Hypervector.initRandom(hashWord(word));
+    pub fn ingestContextualized(self: *AbsoluteCore, text: []const u8) IngestReport {
+        if (!self.trained_hvs_loaded) self.loadTrainedHypervectors();
+        var token_storage: [128][64]u8 = undefined;
+        var token_lens: [128]usize = [_]usize{0} ** 128;
+        var token_count: usize = 0;
+        var it = std.mem.tokenizeAny(u8, text, " \t\r\n");
+        while (it.next()) |word| {
+            if (token_count >= token_storage.len) break;
+            const clean = cleanWord(word, &token_storage[token_count]);
+            if (clean.len < 2) continue;
+            token_lens[token_count] = clean.len;
+            token_count += 1;
+        }
+
+        var total = IngestReport{};
+        var idx: usize = 0;
+        while (idx < token_count) : (idx += 1) {
+            const word = token_storage[idx][0..token_lens[idx]];
+            var hv = self.trainedVectorForWord(word) orelse vsa.Hypervector.initRandom(hashWord(word));
+            var ctx = vsa.Hypervector.initEmpty();
+            var ctx_count: usize = 0;
+
+            const left = if (idx >= 3) idx - 3 else 0;
+            const right = @min(token_count, idx + 4);
+            var j: usize = left;
+            while (j < right) : (j += 1) {
+                if (j == idx) continue;
+                const neighbor = token_storage[j][0..token_lens[j]];
+                const neighbor_hv = self.trainedVectorForWord(neighbor) orelse vsa.Hypervector.initRandom(hashWord(neighbor));
+                ctx = xorHypervectors(ctx, permuteHypervector(neighbor_hv, contextualShift(idx, j)));
+                ctx_count += 1;
             }
-            const bytes = std.mem.sliceAsBytes(hv.data[0..]);
-            const report = self.ingestMeasured(bytes);
-            total.bytes += report.bytes;
-            total.writes += report.writes;
-            if (report.dominant_delta > total.dominant_delta) {
-                total.dominant_delta = report.dominant_delta;
-                total.dominant_edge = report.dominant_edge;
-            }
-            total.edge_fingerprint = std.math.rotl(u64, total.edge_fingerprint ^ report.edge_fingerprint, 13);
+
+            if (ctx_count > 0) hv = hv.bind(ctx);
+            hv = permuteHypervector(hv, ((idx + 1) * 31) % vsa.Dim);
+            total.absorb(self.ingestMeasured(std.mem.sliceAsBytes(hv.data[0..])));
         }
         return total;
     }
@@ -172,13 +282,7 @@ pub const AbsoluteCore = struct {
             const hv = vsa.Hypervector.initRandom(hashWord(word));
             const bytes = std.mem.sliceAsBytes(hv.data[0..]);
             const report = self.ingestMeasured(bytes);
-            total.bytes += report.bytes;
-            total.writes += report.writes;
-            if (report.dominant_delta > total.dominant_delta) {
-                total.dominant_delta = report.dominant_delta;
-                total.dominant_edge = report.dominant_edge;
-            }
-            total.edge_fingerprint = std.math.rotl(u64, total.edge_fingerprint ^ report.edge_fingerprint, 13);
+            total.absorb(report);
         }
         return total;
     }
@@ -326,6 +430,106 @@ pub const AbsoluteCore = struct {
             h *%= 0x100000001B3;
         }
         return h;
+    }
+
+    fn splitMix64(x: u64) u64 {
+        var z = x +% 0x9E3779B97F4A7C15;
+        z = (z ^ (z >> 30)) *% 0xBF58476D1CE4E5B9;
+        z = (z ^ (z >> 27)) *% 0x94D049BB133111EB;
+        return z ^ (z >> 31);
+    }
+
+    fn checksumSeed(mode: TrainedHvMode, count: u64) u64 {
+        return splitMix64(TrainedHvTableMagic ^ count ^ @as(u64, @intFromEnum(mode)));
+    }
+
+    fn checksumEntry(checksum: u64, key: u64, hv: vsa.Hypervector) u64 {
+        var c = splitMix64(checksum ^ key);
+        for (hv.data) |w| c = splitMix64(c ^ w);
+        return c;
+    }
+
+    fn cleanWord(word: []const u8, out: *[64]u8) []const u8 {
+        var len: usize = 0;
+        for (word) |c| {
+            const is_alpha = (c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z');
+            if (is_alpha and len < out.len) {
+                out[len] = if (c >= 'A' and c <= 'Z') c + 32 else c;
+                len += 1;
+            }
+        }
+        return out[0..len];
+    }
+
+    fn paddedChar(word: []const u8, idx: usize) u8 {
+        if (idx == 0) return '<';
+        if (idx == word.len + 1) return '>';
+        return word[idx - 1];
+    }
+
+    fn hashNgramAt(word: []const u8, pos: usize) u64 {
+        var h: u64 = 0xCBF29CE484222325;
+        var i: usize = 0;
+        while (i < 3) : (i += 1) {
+            h ^= @as(u64, paddedChar(word, pos + i));
+            h *%= 0x100000001B3;
+        }
+        return h;
+    }
+
+    fn xorHypervectors(a: vsa.Hypervector, b: vsa.Hypervector) vsa.Hypervector {
+        var out = vsa.Hypervector.initEmpty();
+        for (&out.data, a.data, b.data) |*dst, aw, bw| dst.* = aw ^ bw;
+        return out;
+    }
+
+    fn permuteHypervector(hv: vsa.Hypervector, shift: usize) vsa.Hypervector {
+        const s = shift % vsa.Dim;
+        if (s == 0) return hv;
+        var out = vsa.Hypervector.initEmpty();
+        const word_shift = s / 64;
+        const bit_shift: u6 = @intCast(s % 64);
+        var i: usize = 0;
+        while (i < vsa.WordCount) : (i += 1) {
+            const src_idx = (i + word_shift) % vsa.WordCount;
+            if (bit_shift == 0) {
+                out.data[i] = hv.data[src_idx];
+            } else {
+                const next_idx = (src_idx + 1) % vsa.WordCount;
+                const right_shift: u6 = 0 -% bit_shift;
+                out.data[i] = (hv.data[src_idx] << bit_shift) | (hv.data[next_idx] >> right_shift);
+            }
+        }
+        return out;
+    }
+
+    fn contextualShift(center: usize, neighbor: usize) usize {
+        if (neighbor > center) return ((neighbor - center) * 17) % vsa.Dim;
+        const back = ((center - neighbor) * 17) % vsa.Dim;
+        return if (back == 0) 0 else vsa.Dim - back;
+    }
+
+    fn trainedVectorForWord(self: *AbsoluteCore, word: []const u8) ?vsa.Hypervector {
+        const map = self.trained_hvs orelse return null;
+        return switch (self.trained_hv_mode) {
+            .legacy_word, .word => map.get(hashWord(word)),
+            .ngram => self.ngramVectorForWord(word),
+        };
+    }
+
+    fn ngramVectorForWord(self: *AbsoluteCore, word: []const u8) ?vsa.Hypervector {
+        const map = self.trained_hvs orelse return null;
+        if (word.len == 0) return null;
+        var out = vsa.Hypervector.initEmpty();
+        var found: usize = 0;
+        var pos: usize = 0;
+        while (pos < word.len) : (pos += 1) {
+            if (map.get(hashNgramAt(word, pos))) |hv| {
+                out = xorHypervectors(out, permuteHypervector(hv, ((pos + 1) * 19) % vsa.Dim));
+                found += 1;
+            }
+        }
+        return if (found == 0) null else out;
     }
 
     fn mixWalker(

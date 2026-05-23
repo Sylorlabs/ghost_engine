@@ -77,8 +77,13 @@ fn maxStructuralSimToExtras(p: Program, lib: *const ExtendedLibrary, allocator: 
 }
 
 fn editDistance(a: Program, b: Program, allocator: std.mem.Allocator) !usize {
-    const la = a.used; const lb = b.used;
-    const cols = lb + 1;
+    // Widen to usize before any arithmetic — a.used/b.used are u8 and
+    // (la+1)*cols overflows u8 once programs grow past ~16 comparators.
+    // ReleaseFast silently wraps to a garbage allocation size → corruption;
+    // ReleaseSafe correctly panics. Either way: keep arithmetic in usize.
+    const la: usize = @intCast(a.used);
+    const lb: usize = @intCast(b.used);
+    const cols: usize = lb + 1;
     const dp = try allocator.alloc(usize, (la + 1) * cols);
     defer allocator.free(dp);
     var i: usize = 0;
@@ -263,6 +268,7 @@ fn runGeneration(
     prev_score: f64,
     prev_depth: u8,
     lib: *const ExtendedLibrary,
+    out_dir: []const u8,
     stdout: anytype,
 ) !struct { record: GenRecord, program: Program, score: f64, depth: u8 } {
     try stdout.print("\n--- generation {d} | seed=0x{X} | iters={d} | chain_extras_len={d} ---\n", .{
@@ -322,9 +328,9 @@ fn runGeneration(
     try stdout.print("verdict: {s}\n", .{verdict.label()});
 
     // Persist champion CSV
-    try std.fs.cwd().makePath("results/chain_sort");
-    var path_buf: [128]u8 = undefined;
-    const champ_path = try std.fmt.bufPrint(&path_buf, "results/chain_sort/gen_{d}_champion.csv", .{gen});
+    try std.fs.cwd().makePath(out_dir);
+    var path_buf: [192]u8 = undefined;
+    const champ_path = try std.fmt.bufPrint(&path_buf, "{s}/gen_{d}_champion.csv", .{ out_dir, gen });
     var f = try std.fs.cwd().createFile(champ_path, .{ .truncate = true });
     defer f.close();
     try sort_net.programToCsv(sr.best, f.writer());
@@ -357,6 +363,8 @@ pub fn main() !void {
     var generations: usize = 5;
     var iters: usize = 50000;
     var seed: u64 = 0xCAFE_BABE_1234_5678;
+    var depth_mode_logical: bool = false;
+    var out_subdir: []const u8 = "chain_sort";
 
     while (args.next()) |arg| {
         if (std.mem.startsWith(u8, arg, "--generations=")) {
@@ -369,17 +377,35 @@ pub fn main() !void {
             novelty_lambda = try std.fmt.parseFloat(f64, arg["--lambda=".len..]);
         } else if (std.mem.startsWith(u8, arg, "--depth-weight=")) {
             depth_weight = try std.fmt.parseFloat(f64, arg["--depth-weight=".len..]);
+        } else if (std.mem.eql(u8, arg, "--depth-mode=logical")) {
+            depth_mode_logical = true;
+        } else if (std.mem.eql(u8, arg, "--depth-mode=circuit")) {
+            depth_mode_logical = false;
+        } else if (std.mem.startsWith(u8, arg, "--out-subdir=")) {
+            out_subdir = arg["--out-subdir=".len..];
         }
+    }
+
+    if (depth_mode_logical) {
+        sort_net.setDepthMode(.logical);
+    } else {
+        sort_net.setDepthMode(.circuit);
     }
 
     const stdout = std.io.getStdOut().writer();
     try stdout.print("=== INVENTION CHAIN RUNNER | domain=sort-net-N8 ===\n", .{});
-    try stdout.print("generations={d} iters_per_gen={d} root_seed=0x{X} novelty_lambda={d:.2} depth_weight={d:.2}\n", .{
+    try stdout.print("generations={d} iters_per_gen={d} root_seed=0x{X} novelty_lambda={d:.2} depth_weight={d:.2} depth_mode={s}\n", .{
         generations, iters, seed, novelty_lambda, depth_weight,
+        if (depth_mode_logical) "logical" else "circuit",
     });
 
-    try std.fs.cwd().makePath("results/chain_sort");
-    var log_file = try std.fs.cwd().createFile("results/chain_sort/chain_log.csv", .{ .truncate = true });
+    var out_dir_buf: [128]u8 = undefined;
+    const out_dir = try std.fmt.bufPrint(&out_dir_buf, "results/{s}", .{out_subdir});
+    try std.fs.cwd().makePath(out_dir);
+
+    var log_path_buf: [192]u8 = undefined;
+    const log_path = try std.fmt.bufPrint(&log_path_buf, "{s}/chain_log.csv", .{out_dir});
+    var log_file = try std.fs.cwd().createFile(log_path, .{ .truncate = true });
     defer log_file.close();
     const log = log_file.writer();
     try log.writeAll(
@@ -402,7 +428,7 @@ pub fn main() !void {
 
     while (gen < generations) : (gen += 1) {
         const gen_seed = engine.smix(seed ^ (@as(u64, 0xA5A5_A5A5_5A5A_5A5A) +% gen));
-        const out = try runGeneration(allocator, gen, iters, gen_seed, prev_score, prev_depth, &lib, stdout);
+        const out = try runGeneration(allocator, gen, iters, gen_seed, prev_score, prev_depth, &lib, out_dir, stdout);
         if (out.record.verdict == .strict_domination) any_strict_domination = true;
 
         try log.print("{d},{d:.6},{d:.6},{d},{d},{d},{d:.6},{d:.6},{d:.6},{s}\n", .{
@@ -433,6 +459,6 @@ pub fn main() !void {
         try stdout.print("Completed {d} generations. Final depth={d}, score={d:.3}.\n", .{ generations, prev_depth, prev_score });
     }
     try stdout.print("STRICT_DOMINATION ever observed: {s}\n", .{if (any_strict_domination) "YES" else "NO"});
-    try stdout.print("Per-generation log: results/chain_sort/chain_log.csv\n", .{});
-    try stdout.print("Champion CSVs: results/chain_sort/gen_<n>_champion.csv\n", .{});
+    try stdout.print("Per-generation log: {s}/chain_log.csv\n", .{out_dir});
+    try stdout.print("Champion CSVs: {s}/gen_<n>_champion.csv\n", .{out_dir});
 }

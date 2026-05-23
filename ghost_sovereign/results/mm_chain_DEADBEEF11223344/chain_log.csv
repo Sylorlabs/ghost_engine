@@ -1,0 +1,3 @@
+gen,train_anchor_mean,holdout_mean,prev_holdout,verdict,accepted,mm_evals,chain_extras_len
+0,-252764.086162,-6.564590,0.000000,ADVANCE,0,196,0
+1,-0.769863,-58.746719,-6.564590,HALT(holdout_regression),1,184,1

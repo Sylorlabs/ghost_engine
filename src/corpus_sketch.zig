@@ -21,7 +21,7 @@ pub fn simHash64Query(allocator: std.mem.Allocator, text: []const u8) !Sketch {
     var salience = try intent_grounding.analyzeSalience(allocator, text);
     defer salience.deinit(allocator);
     if (salience.semantic_target.len == 0) return simHash64Internal(allocator, text, .plain);
-    return simHash64Salience(salience.runes);
+    return simHash64Internal(allocator, salience.semantic_target, .plain);
 }
 
 const SketchMode = enum {

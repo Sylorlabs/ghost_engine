@@ -1,0 +1,2 @@
+mutation_rate,crossover_rate,pool_size,t_start,cooling_exponent,restart_period,parent_selection,replacement_policy,acceptance_policy,cooling_schedule,train_strict_hits,train_runs,train_hit_rate,train_quality_hits,train_quality_rate,train_mean_score,train_mean_acceptance,train_composite,budget_scale
+0.712835,0.098662,22,0.562980,1.126884,573,rank_biased,random_pool,metropolis,inverse,7,8,0.875000,7,0.875000,93.088484,0.472969,963.888854,0.020000

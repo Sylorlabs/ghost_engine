@@ -37,6 +37,21 @@ pub fn chainExtrasLen() usize { return chain_extras.len; }
 const MaxCallLibDepth: u32 = 8;
 threadlocal var call_lib_depth: u32 = 0;
 
+// Depth measurement mode for CALL_LIB.
+//   .circuit  — CALL_LIB expands recursively; depth = real expanded depth.
+//               Honest for "what does the deployed circuit look like."
+//   .logical  — CALL_LIB counts as 1 layer; depth = number of *composition
+//               steps*, not expansion. This is what lets a successor
+//               chain rate CALL_LIB(gen_n) as cheap so the inner search
+//               can build on top of it instead of being penalized by it.
+//               Used to test the "macro-composition anti-aligned with
+//               additive cost axes" hypothesis from project_invention_chain.
+pub const DepthMode = enum { circuit, logical };
+var depth_mode: DepthMode = .circuit;
+
+pub fn setDepthMode(m: DepthMode) void { depth_mode = m; }
+pub fn getDepthMode() DepthMode { return depth_mode; }
+
 pub const Program = struct {
     comps: [MaxLen]Comparator,
     used: u8,
@@ -125,16 +140,19 @@ fn depth(net: Program) u8 {
     while (k < net.used) : (k += 1) {
         const c = net.comps[k];
         if (c.kind == 1) {
-            // Macro: add prior champion's depth to all wires it touches
-            // (which is all of them, since sort networks operate on all
-            // wires). Conservative — assumes macro saturates the layer.
+            // Macro behavior is mode-dependent — see DepthMode docstring.
             if (chain_extras.len == 0) continue;
-            const idx: usize = @intCast(@as(usize, c.i) % chain_extras.len);
-            const sub_depth = depth(chain_extras.buffer[idx]);
+            const cost: u8 = switch (depth_mode) {
+                .circuit => blk: {
+                    const idx: usize = @intCast(@as(usize, c.i) % chain_extras.len);
+                    break :blk depth(chain_extras.buffer[idx]);
+                },
+                .logical => 1,
+            };
             var w: usize = 0;
             var max_wire: u8 = 0;
             while (w < N) : (w += 1) if (wire_layer[w] > max_wire) { max_wire = wire_layer[w]; };
-            const new_layer: u8 = max_wire + sub_depth;
+            const new_layer: u8 = max_wire + cost;
             w = 0;
             while (w < N) : (w += 1) wire_layer[w] = new_layer;
             if (new_layer > max_d) max_d = new_layer;

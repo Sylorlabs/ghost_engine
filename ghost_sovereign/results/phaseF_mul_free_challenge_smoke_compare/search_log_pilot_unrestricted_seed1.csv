@@ -1,0 +1,3 @@
+outer_iter,mode,seed,sa_steps,max_prog_len,local_best_iter,local_avalanche,local_balance,local_period,local_chisq,local_composite,best_avalanche,best_balance,best_period,best_chisq,best_composite,best_len,best_hash,accepted,evaluated,elapsed_ms
+0,unrestricted,0xD93C2A0808E56C21,50,12,50,36.482666,32.066406,4096,276.500000,2.126309,36.482666,32.066406,4096,276.500000,2.126309,5,0xAB52F03FB47123F3,35,52,39
+1,unrestricted,0xD93C2A0808E56C21,50,12,32,32.852783,32.140625,4096,261.375000,38.705293,32.852783,32.140625,4096,261.375000,38.705293,4,0x9B23AAE499D99D2E,50,103,72

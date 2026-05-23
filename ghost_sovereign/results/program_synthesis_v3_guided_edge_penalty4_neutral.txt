@@ -1,0 +1,26 @@
+=== PROGRAM SYNTHESIS V3 A/B HARNESS ===
+mode=guided all=0 runs=6 iters=2500 pool=32 seeds=64 max_len=8 allow_step=0 consts=neutral rng=discovered novelty=0.000 edge_penalty=4.000 seed=0x1111111111111111
+reference splitMix64: base=46.2017 avalanche=31.9397 balance=32.0391 period>=4096 chisq=234.63 edge_avalanche=31.8953 fixed=0 zero_outputs=0 unique_low16=3983
+mode run | base delta_ref score av bal chisq len best_iter edge_av fixed zero unique16 hash
+---------|-------------------------------------------------------------------------------
+  guided   0 |  47.090     0.888  47.090 32.03 32.02  252.1   5      2403  32.316     0    0     3987 0xFC9068E699FF95C2
+  guided   1 |  46.872     0.670  46.872 31.98 31.93  257.3   5      1950  31.984     0    0     3997 0x1568EBDD7450E302
+  guided   2 |  47.185     0.983  47.185 32.02 31.97  246.3   5      2150  31.786     0    0     4008 0xBE4F40753561E07F
+  guided   3 |  47.100     0.898  47.100 32.00 32.07  234.1   5      1787  31.561     0    0     4005 0x2024E76439A8FF87
+  guided   4 |  47.156     0.955  47.156 32.03 32.01  258.4   5      2129  32.323     0    0     3983 0x3884B3D0139B90E5
+  guided   5 |  47.458     1.257  47.458 32.00 32.01  254.9   5      1584  31.931     0    0     4004 0x1BDBE5DA7BE6343
+
+=== BEST BY BASE COMPOSITE ===
+mode=guided run=5 seed=0xAE3AC14330BD09A5 base=47.4585 delta_ref=1.2568 score=47.4585 novelty=0.9792 quick_edge_penalty=0.0000
+avalanche=31.9998 balance=32.0078 period>=4096 chisq=254.88 length=5
+edge_avalanche=31.9313 fixed_points=0 zero_outputs=0 unique_low16=4004
+zero=0xC1A3058065228114 one=0x4CFCEF178F75FA11 ones=0x56EB2B870023480E hash=0x1BDBE5DA7BE6343
+program:
+  [0] r0 = MUL(r0, r6, imm=0xF73AA6F92181E4CB)
+  [1] r5 = SHR_XOR(r0, r3, imm=0x000000000000001B)
+  [2] r0 = SHR_XOR(r5, r2, imm=0x000000000000001F)
+  [3] r0 = ADD_CONST(r0, r5, imm=0xA45CC6283E4D291C)
+  [4] r7 = MUL(r0, r1, imm=0xEABF314B99067B13)
+  output = r7
+VERDICT: best discovered program beats splitMix64 on internal base composite by 1.2568. External battery still required.
+CSV: results/program_synthesis_v3_guided_edge_penalty4_neutral.csv

@@ -1,0 +1,9 @@
+=== RECURSIVE CONCEPTLESS INVENTOR V4 ===
+Operator: Block-flip SA (Learned 64-bit Pattern XOR)
+
+Operator: Pareto block-flip MOEA (min_ref + spread_sum)
+
+Initial Pareto pool=2 best_min_ref=286 spread_sum=7180
+
+Pareto best min ref: 286 spread_sum=7180
+VERDICT: FAILED to break ceiling. 286 <= 296

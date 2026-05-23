@@ -1,0 +1,3 @@
+gen,score,prev_score,depth,prev_depth,size,correctness,base_norm_edit,extras_max_sim,verdict
+0,177.000000,-inf,11,255,24,1.000000,0.875000,0.000000,ADVANCE
+1,186.000000,177.000000,6,11,16,1.000000,0.666667,0.291667,ADVANCE + STRICT_DOMINATION

@@ -1,0 +1,8 @@
+idx,op_id,op_name,dst,src1,src2,used_len
+0,9,REG_XOR,2,3,0,7
+1,6,ACCEPT_SA,2,1,1,7
+2,8,RAND_REG,0,3,0,7
+3,1,MUTATE_CUR,3,0,0,7
+4,1,MUTATE_CUR,2,3,2,7
+5,6,ACCEPT_SA,2,3,3,7
+6,4,EVAL_CUR,2,3,2,7

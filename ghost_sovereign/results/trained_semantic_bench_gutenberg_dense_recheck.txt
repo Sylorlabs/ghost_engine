@@ -1,0 +1,29 @@
+=== TRAINED HYPERVECTOR SEMANTIC BENCH ===
+corpus=corpus/gutenberg_dense.txt window=4 max_lines=1300000
+HV_BITS=1024 SPARSITY=8
+
+Corpus loaded: 13689595 bytes
+Trained on 352938 lines, 2265139 tokens, vocabulary size: 52368
+
+WARNING: 13 pair endpoints not in vocabulary (counted as midpoint distance)
+
+related_pairs:           89
+overlap_pairs:           87
+related_mean_hamming:    334.6292 (of 1024)
+related_variance:        3732.7132
+overlap_mean_hamming:    386.9310 (of 1024)
+overlap_variance:        6203.2510
+welch_t:                 -4.9149
+cohens_d (R - O / sd):   -0.7431
+p(R<O) one-tailed:       0.000000
+
+--- COMPARISON ---
+byte ingest (Track 5 baseline):     cohens_d ≈ 1.92  (massive spelling wins)
+random HV (Track 5 semantic mode):  cohens_d ≈ 0.31  (spelling bias reduced)
+trained HV (this run):              cohens_d = -0.7431
+
+BREAKTHROUGH: Cohen's d is significantly NEGATIVE — related word pairs are
+closer to each other in trained-HV space than spelling-overlap pairs.
+Semantic clustering wins. The trained-HV bridge is the architectural fix.
+
+CSV: results/trained_semantic_bench_gutenberg_dense_recheck.csv

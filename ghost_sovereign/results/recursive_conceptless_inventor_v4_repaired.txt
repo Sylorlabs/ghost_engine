@@ -1,0 +1,20 @@
+=== RECURSIVE CONCEPTLESS INVENTOR V4 ===
+Operator: Block-flip SA (Learned 64-bit Pattern XOR)
+
+Trial 0 step 0: new best min_ref = 283 (pattern = 0000000000000000)
+Trial 0 step 3: new best min_ref = 284 (pattern = 0000800000000000)
+Trial 0 step 7: new best min_ref = 285 (pattern = 0000A00000004000)
+Trial 0 step 3712: new best min_ref = 286 (pattern = 0220008F75542549)
+Trial 0 step 18312: new best min_ref = 287 (pattern = 86A0140E3730EC2C)
+Trial 0 finished. Min ref = 287
+Trial 1 finished. Min ref = 283
+Trial 2 finished. Min ref = 286
+Trial 3 finished. Min ref = 286
+Trial 4 finished. Min ref = 287
+Trial 5 finished. Min ref = 285
+Trial 6 finished. Min ref = 284
+Trial 7 step 168671: new best min_ref = 288 (pattern = CD600F42C536040A)
+Trial 7 finished. Min ref = 288
+
+Global best min ref: 288
+VERDICT: FAILED to break ceiling. 288 <= 296

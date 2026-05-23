@@ -1,0 +1,38 @@
+=== TIER-1 CHAIN RUNNER ===
+generations=3 tier1_iters=16 mm_outer_iters=10 tier0_inner_steps=150 root_seed=0xF00DBEEFCAFEFACE wide_call_meta=true constrained_meta_init=true monotone_retries=6 initial_best_holdout=47.1615
+seeded library[0] = results/mm_chain_mono_F00D/BEST_champion_meta.csv  (14 instrs)
+
+--- generation 0 | chain_extras_len=1 | best_so_far=47.1615 ---
+  spawning 6 parallel attempts...
+  attempt 1/6 seed=0xB3E883177C9E63DF anchor=46.7894 holdout=42.8739
+  attempt 2/6 seed=0x6F984886EE81C9BB anchor=47.4551 holdout=39.5751
+  attempt 3/6 seed=0x1702E3A945B4D743 anchor=47.7034 holdout=47.1615
+  attempt 4/6 seed=0xC54D3DF0D7886CAD anchor=47.6504 holdout=47.1615
+  attempt 5/6 seed=0x2EE5C76C668CC6B7 anchor=47.7028 holdout=13.5995
+  attempt 6/6 seed=0xDFA1E384AD26C3BD anchor=47.7308 holdout=7.9358
+gen 0 summary: SOFT_HALT(retries_exhausted_but_continuing)  (best_attempt_holdout=47.1615  best_so_far=47.1615  attempts_run=6)
+
+--- generation 1 | chain_extras_len=1 | best_so_far=47.1615 ---
+  spawning 6 parallel attempts...
+  attempt 1/6 seed=0xED50B7CC7F1449A6 anchor=47.6504 holdout=47.1615
+  attempt 2/6 seed=0xC7A978F5BF03BDB0 anchor=47.0174 holdout=39.5751
+  attempt 3/6 seed=0xF6843C71DC1939B8 anchor=47.6982 holdout=47.1615
+  attempt 4/6 seed=0x1524A51BB30D0CA0 anchor=47.6985 holdout=47.1615
+  attempt 5/6 seed=0xAB0C8C193A8AF4D9 anchor=47.7119 holdout=47.1615
+  attempt 6/6 seed=0x1369E2DF7B6D7C2B anchor=47.2367 holdout=39.5751
+gen 1 summary: SOFT_HALT(retries_exhausted_but_continuing)  (best_attempt_holdout=47.1615  best_so_far=47.1615  attempts_run=6)
+
+--- generation 2 | chain_extras_len=1 | best_so_far=47.1615 ---
+  spawning 6 parallel attempts...
+  attempt 1/6 seed=0x4A174881FDFF5603 anchor=47.5868 holdout=47.1615
+  attempt 2/6 seed=0xBECE2583B1DA0306 anchor=47.0313 holdout=40.7041
+  attempt 3/6 seed=0xDE03408DACE5B3ED anchor=47.6983 holdout=47.1615
+  attempt 4/6 seed=0x9451AA2C77BB6EBF anchor=46.9869 holdout=36.6240
+  attempt 5/6 seed=0xA5ECCDBAF342CD66 anchor=46.8476 holdout=42.8739
+  attempt 6/6 seed=0x8616411BB604A033 anchor=47.4007 holdout=-1341.9802
+gen 2 summary: SOFT_HALT(retries_exhausted_but_continuing)  (best_attempt_holdout=47.1615  best_so_far=47.1615  attempts_run=6)
+
+=== CHAIN RESULT ===
+Completed 3 generations.
+STRICT_DOMINATION ever observed: NO
+BEST_HOLDOUT_EVER = 47.1615  (at gen 0, attempt 0)

@@ -1,0 +1,2 @@
+gen,score,prev_score,depth,prev_depth,size,correctness,base_norm_edit,extras_max_sim,verdict
+0,130.531250,-inf,14,255,25,0.785156,0.840000,0.000000,HALT(non_quality)

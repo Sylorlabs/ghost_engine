@@ -2,7 +2,8 @@ const std = @import("std");
 const absolute = @import("absolute_final");
 
 const ConceptPair = struct { a: []const u8, b: []const u8 };
-const IngestMode = enum { byte, semantic, trained };
+const IngestMode = enum { byte, semantic, trained, contextual };
+const ReadoutMode = enum { edge, fingerprint };
 
 const related_pairs = [_]ConceptPair{
     .{ .a = "gravity", .b = "mass" },       .{ .a = "star", .b = "planet" },
@@ -99,19 +100,23 @@ const overlap_pairs = [_]ConceptPair{
     .{ .a = "plate", .b = "plait" },
 };
 
-fn signatureAfterIngest(core: *absolute.AbsoluteCore, snapshot: []const u64, word: []const u8, mode: IngestMode) u64 {
+fn signatureAfterIngest(core: *absolute.AbsoluteCore, snapshot: []const u64, word: []const u8, mode: IngestMode, readout: ReadoutMode) u64 {
     @memcpy(core.field, snapshot);
     const report = switch (mode) {
         .byte => core.ingestMeasured(word),
         .semantic => core.ingestSemantic(word),
         .trained => core.ingestSemanticTrained(word),
+        .contextual => core.ingestContextualized(word),
     };
-    return core.field[report.dominant_edge];
+    return switch (readout) {
+        .edge => core.field[report.dominant_edge],
+        .fingerprint => report.edge_fingerprint,
+    };
 }
 
-fn hammingPairOnSnapshot(core: *absolute.AbsoluteCore, snapshot: []const u64, pair: ConceptPair, mode: IngestMode) u8 {
-    const sig_a = signatureAfterIngest(core, snapshot, pair.a, mode);
-    const sig_b = signatureAfterIngest(core, snapshot, pair.b, mode);
+fn hammingPairOnSnapshot(core: *absolute.AbsoluteCore, snapshot: []const u64, pair: ConceptPair, mode: IngestMode, readout: ReadoutMode) u8 {
+    const sig_a = signatureAfterIngest(core, snapshot, pair.a, mode, readout);
+    const sig_b = signatureAfterIngest(core, snapshot, pair.b, mode, readout);
     return @intCast(@popCount(sig_a ^ sig_b));
 }
 
@@ -161,14 +166,14 @@ const BenchResult = struct {
     p_one_tailed_R_lt_O: f64,
 };
 
-fn runBenchOnSnapshot(core: *absolute.AbsoluteCore, snapshot: []const u64, allocator: std.mem.Allocator, mode: IngestMode) !BenchResult {
+fn runBenchOnSnapshot(core: *absolute.AbsoluteCore, snapshot: []const u64, allocator: std.mem.Allocator, mode: IngestMode, readout: ReadoutMode) !BenchResult {
     var related_h = try allocator.alloc(u8, related_pairs.len);
     defer allocator.free(related_h);
     var overlap_h = try allocator.alloc(u8, overlap_pairs.len);
     defer allocator.free(overlap_h);
 
-    for (related_pairs, 0..) |p, i| related_h[i] = hammingPairOnSnapshot(core, snapshot, p, mode);
-    for (overlap_pairs, 0..) |p, i| overlap_h[i] = hammingPairOnSnapshot(core, snapshot, p, mode);
+    for (related_pairs, 0..) |p, i| related_h[i] = hammingPairOnSnapshot(core, snapshot, p, mode, readout);
+    for (overlap_pairs, 0..) |p, i| overlap_h[i] = hammingPairOnSnapshot(core, snapshot, p, mode, readout);
 
     const rs = meanAndVar(related_h);
     const os = meanAndVar(overlap_h);
@@ -229,17 +234,22 @@ pub fn main() !void {
     var checkpoints_csv: []const u8 = "0,10,100,1000";
     var max_lines: usize = 1_000_000;
     var mode: IngestMode = .byte;
+    var readout: ReadoutMode = .edge;
+    var hv_path: []const u8 = absolute.AbsoluteCore.DefaultTrainedHvPath;
 
     while (args.next()) |arg| {
-        if (std.mem.startsWith(u8, arg, "--corpus=")) corpus_path = arg["--corpus=".len..] else if (std.mem.startsWith(u8, arg, "--state=")) state_path = arg["--state=".len..] else if (std.mem.startsWith(u8, arg, "--csv=")) csv_path = arg["--csv=".len..] else if (std.mem.startsWith(u8, arg, "--checkpoints=")) checkpoints_csv = arg["--checkpoints=".len..] else if (std.mem.startsWith(u8, arg, "--max=")) max_lines = try std.fmt.parseInt(usize, arg["--max=".len..], 10) else if (std.mem.eql(u8, arg, "--semantic")) mode = .semantic else if (std.mem.startsWith(u8, arg, "--mode=")) {
+        if (std.mem.startsWith(u8, arg, "--corpus=")) corpus_path = arg["--corpus=".len..] else if (std.mem.startsWith(u8, arg, "--state=")) state_path = arg["--state=".len..] else if (std.mem.startsWith(u8, arg, "--csv=")) csv_path = arg["--csv=".len..] else if (std.mem.startsWith(u8, arg, "--checkpoints=")) checkpoints_csv = arg["--checkpoints=".len..] else if (std.mem.startsWith(u8, arg, "--max=")) max_lines = try std.fmt.parseInt(usize, arg["--max=".len..], 10) else if (std.mem.startsWith(u8, arg, "--hv=")) hv_path = arg["--hv=".len..] else if (std.mem.startsWith(u8, arg, "--readout=")) {
+            const value = arg["--readout=".len..];
+            if (std.mem.eql(u8, value, "edge")) readout = .edge else if (std.mem.eql(u8, value, "fingerprint")) readout = .fingerprint else return error.InvalidReadout;
+        } else if (std.mem.eql(u8, arg, "--semantic")) mode = .semantic else if (std.mem.startsWith(u8, arg, "--mode=")) {
             const value = arg["--mode=".len..];
-            if (std.mem.eql(u8, value, "byte")) mode = .byte else if (std.mem.eql(u8, value, "semantic")) mode = .semantic else if (std.mem.eql(u8, value, "trained")) mode = .trained else return error.InvalidMode;
+            if (std.mem.eql(u8, value, "byte")) mode = .byte else if (std.mem.eql(u8, value, "semantic")) mode = .semantic else if (std.mem.eql(u8, value, "trained")) mode = .trained else if (std.mem.eql(u8, value, "contextual")) mode = .contextual else return error.InvalidMode;
         }
     }
 
     const stdout = std.io.getStdOut().writer();
     if (corpus_path == null) {
-        try stdout.writeAll("usage: ingestion_scale --corpus=PATH [--mode=byte|semantic] [--checkpoints=0,10,100,1000] [--max=N] [--csv=PATH] [--state=PATH]\n");
+        try stdout.writeAll("usage: ingestion_scale --corpus=PATH [--mode=byte|semantic|trained|contextual] [--readout=edge|fingerprint] [--hv=PATH] [--checkpoints=0,10,100,1000] [--max=N] [--csv=PATH] [--state=PATH]\n");
         try stdout.writeAll("\nReads newline-separated sentences. At each checkpoint N, ingests the first N\n");
         try stdout.writeAll("sentences, snapshots the manifold, runs the understanding_bench against the\n");
         try stdout.writeAll("snapshot, and emits one CSV row: corpus_size,related_mean,overlap_mean,cohens_d,p_one_tailed,welch_t.\n");
@@ -254,11 +264,27 @@ pub fn main() !void {
     try stdout.print("Corpus: {s} ({d} lines loaded)\n", .{ corpus_path.?, corpus.len });
     try stdout.print("Checkpoints: {any}\n", .{checkpoints});
     try stdout.print("Mode:   {s}\n", .{@tagName(mode)});
+    try stdout.print("Readout:{s}\n", .{@tagName(readout)});
     try stdout.print("State:  {s}\n", .{state_path});
     try stdout.print("CSV:    {s}\n\n", .{csv_path});
 
     var core = try absolute.AbsoluteCore.initAt(state_path, 16 * 1024 * 1024);
     defer core.deinit();
+    if (mode == .trained or mode == .contextual) {
+        core.setTrainedHypervectorPath(hv_path);
+        core.loadTrainedHypervectors();
+        const info = core.trainedHypervectorInfo();
+        try stdout.print("Trained HV: path={s} loaded={} mode={s} count={d} flags=0x{X} checksum=0x{X} expected=0x{X} checksum_ok={}\n\n", .{
+            info.path,
+            info.loaded,
+            @tagName(info.mode),
+            info.count,
+            info.flags,
+            info.checksum,
+            info.expected_checksum,
+            info.checksum_ok,
+        });
+    }
     const snapshot = try allocator.alloc(u64, core.field.len);
     defer allocator.free(snapshot);
 
@@ -268,7 +294,7 @@ pub fn main() !void {
     var csv_file = try std.fs.cwd().createFile(csv_path, .{ .truncate = true });
     defer csv_file.close();
     var csv_w = csv_file.writer();
-    try csv_w.writeAll("mode,corpus_size,sentences_used,related_mean,overlap_mean,cohens_d,welch_t,p_one_tailed_R_lt_O\n");
+    try csv_w.writeAll("mode,readout,corpus_size,sentences_used,related_mean,overlap_mean,cohens_d,welch_t,p_one_tailed_R_lt_O\n");
 
     try stdout.writeAll("corpus_N | used | related_mean | overlap_mean | cohens_d | welch_t | p(R<O)  | semantic_wins?\n");
     try stdout.writeAll("---------|------|--------------|--------------|----------|---------|---------|----------------\n");
@@ -284,17 +310,18 @@ pub fn main() !void {
                 },
                 .semantic => _ = core.ingestSemantic(line),
                 .trained => _ = core.ingestSemanticTrained(line),
+                .contextual => _ = core.ingestContextualized(line),
             }
         }
         @memcpy(snapshot, core.field);
-        const result = try runBenchOnSnapshot(&core, snapshot, allocator, mode);
+        const result = try runBenchOnSnapshot(&core, snapshot, allocator, mode, readout);
         const semantic_wins = result.related_mean < result.overlap_mean and result.p_one_tailed_R_lt_O < 0.01;
         try stdout.print("{d: >8} | {d: >4} | {d: >12.4} | {d: >12.4} | {d: >8.4} | {d: >7.3} | {d: >7.5} | {s}\n", .{
             target_n,       used,                       result.related_mean,                result.overlap_mean, result.cohens_d,
             result.welch_t, result.p_one_tailed_R_lt_O, if (semantic_wins) "YES" else "no",
         });
-        try csv_w.print("{s},{d},{d},{d:.6},{d:.6},{d:.6},{d:.6},{d:.6}\n", .{
-            @tagName(mode), target_n,                   used,                result.related_mean, result.overlap_mean, result.cohens_d,
+        try csv_w.print("{s},{s},{d},{d},{d:.6},{d:.6},{d:.6},{d:.6},{d:.6}\n", .{
+            @tagName(mode), @tagName(readout),          target_n,            used,                result.related_mean, result.overlap_mean, result.cohens_d,
             result.welch_t, result.p_one_tailed_R_lt_O,
         });
     }

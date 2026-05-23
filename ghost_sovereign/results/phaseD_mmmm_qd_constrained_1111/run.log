@@ -1,0 +1,19 @@
+=== MMMMP QUALITY PROBE ===
+samples=16 seed=0x1111222233334444 seed_mmmp=3 mmmm_outer=6 tier2_outer=6 tier1_outer=8 tier0_inner=150
+sample 1/16: anchor=47.7394 holdout=30.9057 best=30.9057
+sample 2/16: anchor=47.7137 holdout=35.7226 best=35.7226
+sample 3/16: anchor=47.7394 holdout=30.9057 best=35.7226
+sample 4/16: anchor=47.6966 holdout=30.9057 best=35.7226
+sample 5/16: anchor=47.6744 holdout=30.9057 best=35.7226
+sample 6/16: anchor=47.6441 holdout=30.9057 best=35.7226
+sample 7/16: anchor=47.7620 holdout=30.9057 best=35.7226
+sample 8/16: anchor=47.6503 holdout=30.9057 best=35.7226
+sample 9/16: anchor=47.6838 holdout=30.9057 best=35.7226
+sample 10/16: anchor=47.7163 holdout=30.9057 best=35.7226
+sample 11/16: anchor=47.6954 holdout=30.9057 best=35.7226
+sample 12/16: anchor=47.7194 holdout=30.9057 best=35.7226
+sample 13/16: anchor=47.6875 holdout=35.7226 best=35.7226
+sample 14/16: anchor=47.6271 holdout=30.9057 best=35.7226
+sample 15/16: anchor=47.7479 holdout=30.9057 best=35.7226
+sample 16/16: anchor=47.6551 holdout=30.9057 best=35.7226
+BEST_HOLDOUT = 35.7226 sample=1 anchor=47.7137

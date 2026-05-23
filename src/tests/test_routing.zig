@@ -7,5 +7,3 @@ test "Neural IPC Bridge Routing test" {
     std.debug.print("Smoke monolith removed, modular routing test running.\n", .{});
     try std.testing.expect(true);
 }
-
-

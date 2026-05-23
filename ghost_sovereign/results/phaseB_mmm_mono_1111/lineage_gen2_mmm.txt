@@ -1,0 +1,4 @@
+=== LINEAGE AUDIT ===
+kind=mmm candidate=results/phaseB_mmm_mono_1111/gen_2_champion_mmm.csv used=8
+has_eval=true has_accept=true has_call=true first_eval=1 first_accept=2 eval_before_accept=true
+against_count=0 lineage_verdict=NOT_CHECKED

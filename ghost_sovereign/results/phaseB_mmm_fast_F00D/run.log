@@ -1,0 +1,32 @@
+=== TIER-2 CHAIN RUNNER (MMMP) ===
+generations=5 tier2_iters=12 mmm_outer_iters=6 tier1_outer_iters=8 tier0_inner_steps=120 root_seed=0xF00DBEEFCAFEFACE shaped_fitness=true constrained_init=true wide_call_meta=true wide_call_mm=true monotone_retries=8 promotion_threshold=47.1615
+seeded mm_library[0] = results/mm_chain_mono_F00D/BEST_champion_meta_meta.csv  (11 instrs)
+seeded mm_library[1] = results/mm_chain_par_1111/BEST_champion_meta_meta.csv  (10 instrs)
+seeded mm_library[2] = results/phaseA_stack_F00D/BEST_champion_meta_meta.csv  (10 instrs)
+
+--- generation 0 | chain_extras_mm_len=3 | best_so_far=-inf ---
+  spawning 8 parallel attempts...
+  attempt 1/8 seed=0xF0365DE7835908A3 anchor=38.6482 holdout=-1000000.0000
+  attempt 2/8 seed=0x15765F4E972A0B46 anchor=47.0712 holdout=-10764.6875
+  attempt 3/8 seed=0xF5E33AD45D868ED2 anchor=41.3606 holdout=-48.6847
+  attempt 4/8 seed=0xDC97BBD2B9D1FA3F anchor=42.1355 holdout=-10764.6875
+  attempt 5/8 seed=0x51F997ECCB5345A2 anchor=41.3606 holdout=-48.6847
+  attempt 6/8 seed=0x38AB5A643C285EC6 anchor=41.3606 holdout=-48.6847
+  attempt 7/8 seed=0xD75125455FCE8773 anchor=-26.1416 holdout=-1000000.0000
+  attempt 8/8 seed=0x2CEFF1025B75896D anchor=41.7348 holdout=-2739.3395
+gen 0 summary: ADVANCE + STRICT_PROGRESS  (best_attempt_holdout=-48.6847  best_so_far=-inf  attempts_run=8)
+
+--- generation 1 | chain_extras_mm_len=4 | best_so_far=-48.6847 ---
+  spawning 8 parallel attempts...
+  attempt 1/8 seed=0xB3D8DB884B6612BA anchor=41.3606 holdout=-48.6847
+  attempt 2/8 seed=0x44F9F430D2B2AACA anchor=47.4213 holdout=-4013.3112
+  attempt 3/8 seed=0x6D7F1EB31A105963 anchor=41.3606 holdout=-48.6847
+  attempt 4/8 seed=0x7550D8B34E99CD51 anchor=-32.5876 holdout=-10764.6875
+  attempt 5/8 seed=0x7D901E38CD99D185 anchor=6.3747 holdout=-1000000.0000
+  attempt 6/8 seed=0x90D6E7659D88A5C3 anchor=46.3011 holdout=-10764.8750
+  attempt 7/8 seed=0xC75FE57B965D0274 anchor=41.3606 holdout=-48.6847
+  attempt 8/8 seed=0x1811EC9C77FB91BC anchor=41.3606 holdout=-48.6847
+gen 1 summary: SOFT_HALT(retries_exhausted_but_continuing)  (best_attempt_holdout=-48.6847  best_so_far=-48.6847  attempts_run=8)
+
+--- generation 2 | chain_extras_mm_len=4 | best_so_far=-48.6847 ---
+  spawning 8 parallel attempts...

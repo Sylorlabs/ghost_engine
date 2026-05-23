@@ -1,0 +1,28 @@
+=== MMMP QUALITY-DIVERSITY PROBE ===
+samples=24 seed=0x1111222233334444 seed_mms=3 shaped=true constrained=true wide_meta=true wide_mm=true repair=false
+sample 1/24: cell=23 anchor=41.3606 holdout=-48.6847 nearest=1.000
+sample 2/24: cell=29 anchor=-25065.3314 holdout=-48.6847 nearest=1.000
+sample 3/24: cell=32 anchor=-2800.0601 holdout=-1000000.0000 nearest=1.000
+sample 4/24: cell=20 anchor=-30.6535 holdout=-10764.6875 nearest=1.000
+sample 5/24: cell=23 anchor=-26.1416 holdout=-1000000.0000 nearest=1.000
+sample 6/24: cell=20 anchor=-25156.0263 holdout=-1000000.0000 nearest=1.000
+sample 7/24: cell=29 anchor=-2720.4600 holdout=-10764.8750 nearest=1.000
+sample 8/24: cell=23 anchor=-2722.3502 holdout=20.7816 nearest=0.909
+sample 9/24: cell=29 anchor=46.3011 holdout=-10764.8750 nearest=1.000
+sample 10/24: cell=23 anchor=-82.3005 holdout=26.5837 nearest=1.000
+sample 11/24: cell=20 anchor=41.7897 holdout=-1000000.0000 nearest=1.000
+sample 12/24: cell=20 anchor=-0.9734 holdout=-10764.6875 nearest=1.000
+sample 13/24: cell=23 anchor=-3183.1642 holdout=-10764.6875 nearest=1.000
+sample 14/24: cell=29 anchor=-25086.7199 holdout=-10764.6875 nearest=1.000
+sample 15/24: cell=29 anchor=-2647.5507 holdout=-1348.6280 nearest=1.000
+sample 16/24: cell=32 anchor=-25038.5428 holdout=39.5751 nearest=1.000
+sample 17/24: cell=35 anchor=-24990.7344 holdout=-10764.6875 nearest=1.000
+sample 18/24: cell=23 anchor=-26.1416 holdout=-1000000.0000 nearest=1.000
+sample 19/24: cell=20 anchor=-220.4019 holdout=-1000000.0000 nearest=1.000
+sample 20/24: cell=23 anchor=-26.1416 holdout=-1000000.0000 nearest=1.000
+sample 21/24: cell=29 anchor=-2688.8188 holdout=-1000000.0000 nearest=1.000
+sample 22/24: cell=35 anchor=-2720.9341 holdout=-10764.8750 nearest=1.000
+sample 23/24: cell=23 anchor=-26.1416 holdout=-1000000.0000 nearest=1.000
+sample 24/24: cell=23 anchor=-28.4390 holdout=-1000000.0000 nearest=1.000
+filled_cells=5/36
+BEST_HOLDOUT = 39.5751 cell=32 sample=15 nearest_seed_norm=1.0000

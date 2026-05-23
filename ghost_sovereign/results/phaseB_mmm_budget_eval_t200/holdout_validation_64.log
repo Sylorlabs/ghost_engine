@@ -1,0 +1,25 @@
+=== CHAMPION HELD-OUT VALIDATION ===
+champion=results/phaseB_mmm_budget_eval_t200/BEST_champion_meta.csv  n_holdout=64  inner_steps=200  baseline_iters=240
+loaded champion MetaProgram with 12 instructions
+
+=== STRUCTURAL LINEAGE AUDIT ===
+has_eval=true has_accept=true first_eval=1 first_accept=2 eval_before_accept=true
+against_count=2 exact_copy=true nearest_edit_distance=0 nearest_normalized=0.0000 nearest=results/phaseB_mmm_budget_eval_t150/BEST_champion_meta.csv
+lineage_verdict=COPY
+
+[baseline] running disciplined outer SA, iters=240...
+[baseline] done in 63449 ms
+
+[evaluate] running 64 held-out seeds for both champions...
+[evaluate] done in 9198 ms
+
+=== RESULTS ===
+                    n_finite    mean       std        min        max
+discovered champ:      64         46.9838     1.7068    35.0874    47.8608
+baseline outer SA:     64         11.0124    76.5778  -304.1039    47.8218
+
+per-seed paired delta (champ - baseline): mean=35.9714  wins=34  losses=10  ties=20
+
+=== VERDICT ===
+CONFIRM: discovered champion beats baseline on 64-seed held-out.
+         mean delta = 35.9714, paired wins 34/64

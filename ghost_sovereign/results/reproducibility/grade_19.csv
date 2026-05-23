@@ -1,0 +1,8 @@
+candidate,closest_by_edit,min_edit,norm_edit,best_bit_agreement,best_exact_equiv,avalanche,balance,chisq,period,passes_quality,reach_bits,reach_depth,reach_path,reachable,verdict
+splitMix64_self,splitMix64,0,0.0000,1.0000,1.0000,31.9397,32.0391,234.6250,4096,1,1.0000,1,splitMix64,1,EQUIVALENT (functional)
+splitMix64_trivial_mod,splitMix64,1,0.1667,0.5020,0.0000,31.9778,31.7617,289.7500,4096,1,0.5066,3,MurmurFinalizer>MurmurFinalizer>MurmurFinalizer,0,TRIVIAL VARIANT (edit<=1)
+random_program_A,MurmurFinalizer,5,1.0000,0.5014,0.0000,0.0000,38.0000,1044480.0000,4096,0,0.5061,4,WangHash64>WangHash64>splitMix64>MurmurFinalizer,0,NON-MIXER (fails quality gate)
+random_program_B,MurmurFinalizer,5,1.0000,0.5022,0.0000,0.0000,36.0000,1044480.0000,4096,0,0.5076,5,splitMix64>xorshift64>splitMix64>splitMix64>xorshift64,0,NON-MIXER (fails quality gate)
+documented_run1_structure,MurmurFinalizer,5,1.0000,0.5014,0.0000,31.6680,32.4375,1213.2500,4096,0,0.5070,4,splitMix64>xorshift64>MurmurFinalizer>WangHash64,0,NON-MIXER (fails quality gate)
+documented_run2_structure,MurmurFinalizer,5,1.0000,0.5035,0.0000,32.1135,31.7031,229.8750,4096,1,0.5063,5,WangHash64>xorshift64>xorshift64>MurmurFinalizer>MurmurFinalize,0,INVENTION (strict: divergent + quality + unreachable)
+loaded_champion_csv,xorshift64,4,1.0000,0.5006,0.0000,32.0029,32.0000,214.3750,4096,1,0.5054,4,MurmurFinalizer>WangHash64>xorshift64>xorshift64,0,INVENTION (strict: divergent + quality + unreachable)

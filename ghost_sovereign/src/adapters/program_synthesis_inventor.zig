@@ -507,4 +507,20 @@ pub fn main() !void {
         try stdout.print("\nVERDICT: discovered program scores {d:.2} below splitMix64 reference. Real but not yet competitive.\n", .{ref_fit.composite - final.f.composite});
     }
     try stdout.print("CSV trajectory: {s}\n", .{csv_path});
+
+    // Persist final champion in machine-readable form for the reachability
+    // tester (and any downstream invention-grading tool).
+    // Schema: idx,op_id,op_name,dst,src1,src2,imm_hex
+    var champ = try std.fs.cwd().createFile("results/program_synthesis_champion.csv", .{ .truncate = true });
+    defer champ.close();
+    try champ.writer().writeAll("idx,op_id,op_name,dst,src1,src2,imm_hex,used_len,composite,avalanche,balance,period,chisq\n");
+    var ci: usize = 0;
+    while (ci < final.p.used) : (ci += 1) {
+        const inst = final.p.instructions[ci];
+        try champ.writer().print("{d},{d},{s},{d},{d},{d},0x{X:0>16},{d},{d:.4},{d:.4},{d:.4},{d},{d:.4}\n", .{
+            ci, @intFromEnum(inst.op), opName(inst.op), inst.dst, inst.src1, inst.src2, inst.imm,
+            final.p.used, final.f.composite, final.f.avalanche, final.f.balance, final.f.period, final.f.chisq,
+        });
+    }
+    try stdout.print("Champion program persisted: results/program_synthesis_champion.csv\n", .{});
 }

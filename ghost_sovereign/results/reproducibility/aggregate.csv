@@ -1,0 +1,21 @@
+run,seed_hex,verdict,quality_pass,best_bit,reach_bits,reach_depth
+1,5F3767B97F4A7C15,INVENTION (strict: divergent + quality + unreachable),1,0.5021,0.5074,5
+2,FD6EE172FE94F82A,INVENTION (strict: divergent + quality + unreachable),1,0.5022,0.5064,5
+3,9BA65B2C7DDF743F,INVENTION (strict: divergent + quality + unreachable),1,0.5011,0.5072,5
+4,39DDD4E5FD29F054,INVENTION (strict: divergent + quality + unreachable),1,0.5045,0.5063,5
+5,D8154E9F7C746C69,INVENTION (strict: divergent + quality + unreachable),1,0.5008,0.5065,5
+6,764CC858FBBEE87E,INVENTION (strict: divergent + quality + unreachable),1,0.5024,0.5054,5
+7,148442127B096493,INVENTION (strict: divergent + quality + unreachable),1,0.5013,0.5070,2
+8,B2BBBBCBFA53E0A8,INVENTION (strict: divergent + quality + unreachable),1,0.5022,0.5067,5
+9,50F33585799E5CBD,INVENTION (strict: divergent + quality + unreachable),1,0.5007,0.5068,3
+10,EF2AAF3EF8E8D8D2,INVENTION (strict: divergent + quality + unreachable),1,0.5013,0.5067,5
+11,8D6228F8783354E7,INVENTION (strict: divergent + quality + unreachable),1,0.5001,0.5071,5
+12,2B99A2B1F77DD0FC,INVENTION (strict: divergent + quality + unreachable),1,0.5003,0.5062,5
+13,C9D11C6B76C84D11,INVENTION (strict: divergent + quality + unreachable),1,0.5022,0.5069,5
+14,68089624F612C926,INVENTION (strict: divergent + quality + unreachable),1,0.5044,0.5068,4
+15,06400FDE755D453B,INVENTION (strict: divergent + quality + unreachable),1,0.5033,0.5068,4
+16,A4778997F4A7C150,INVENTION (strict: divergent + quality + unreachable),1,0.5024,0.5060,5
+17,42AF035173F23D65,INVENTION (strict: divergent + quality + unreachable),1,0.5025,0.5068,5
+18,E0E67D0AF33CB97A,INVENTION (strict: divergent + quality + unreachable),1,0.5018,0.5065,4
+19,7F1DF6C47287358F,INVENTION (strict: divergent + quality + unreachable),1,0.5006,0.5054,4
+20,1D55707DF1D1B1A4,INVENTION (strict: divergent + quality + unreachable),1,0.5038,0.5065,5

@@ -1,6 +1,54 @@
 const std = @import("std");
 const ghost = @import("ghost_core");
 
+// Direct libz3 (already linked via build.zig). Replaces the prior
+// hardcoded "SMT_VERIFIED_FOUNDATIONAL_TRUTH" lie with a real solver
+// verdict on the generated SMT-LIB2.
+const c = @cImport({
+    @cInclude("z3.h");
+});
+
+fn z3_silent_error_handler(_: c.Z3_context, _: c.Z3_error_code) callconv(.C) void {}
+
+const VerifyVerdict = enum { verified_unsat, sat_solution, unknown, error_smt };
+
+fn verifySmt(allocator: std.mem.Allocator, smt_text: []const u8, timeout_ms: u32) VerifyVerdict {
+    const cfg = c.Z3_mk_config() orelse return .error_smt;
+    defer c.Z3_del_config(cfg);
+
+    var to_buf: [32]u8 = undefined;
+    const timeout_s = std.fmt.bufPrintZ(&to_buf, "{d}", .{timeout_ms}) catch return .error_smt;
+    c.Z3_set_param_value(cfg, "timeout", timeout_s.ptr);
+
+    const ctx = c.Z3_mk_context(cfg) orelse return .error_smt;
+    defer c.Z3_del_context(ctx);
+    c.Z3_set_error_handler(ctx, z3_silent_error_handler);
+
+    const text_z = allocator.dupeZ(u8, smt_text) catch return .error_smt;
+    defer allocator.free(text_z);
+
+    const out_z = c.Z3_eval_smtlib2_string(ctx, text_z.ptr);
+    if (out_z == null) return .error_smt;
+    const out = std.mem.span(out_z);
+
+    // First non-empty line is the (check-sat) verdict
+    var lines = std.mem.tokenizeAny(u8, out, "\n\r");
+    const verdict_line = lines.next() orelse "";
+    if (std.mem.startsWith(u8, verdict_line, "unsat")) return .verified_unsat;
+    if (std.mem.startsWith(u8, verdict_line, "sat")) return .sat_solution;
+    if (std.mem.startsWith(u8, verdict_line, "unknown")) return .unknown;
+    return .error_smt;
+}
+
+fn verdictTag(v: VerifyVerdict) []const u8 {
+    return switch (v) {
+        .verified_unsat   => "SMT_UNSAT (no model exists — constraint set is contradictory)",
+        .sat_solution     => "SMT_SAT (concrete model found — constraints are satisfiable)",
+        .unknown          => "SMT_UNKNOWN (solver gave up — likely timeout)",
+        .error_smt        => "SMT_ERROR (bad SMT or runtime error)",
+    };
+}
+
 const Options = struct {
     project_shard: []const u8,
     message: []const u8,
@@ -115,9 +163,16 @@ fn synthesizeAlgebraicBlueprint(
             try sw.print("(assert (distinct s_{d} {d}))\n", .{ i, (v >> 32) % 1000 });
         }
     }
-    try sw.writeAll("(check-sat)\n(get-model)\n");
+    try sw.writeAll("(check-sat)\n");
 
-    // 3. CATEGORY THEORY RIGOR
+    // 3. REAL SMT VERIFICATION (replaces the hardcoded
+    //    SMT_VERIFIED_FOUNDATIONAL_TRUTH lie flagged by the audit).
+    //    We snapshot the SMT to a slice and invoke libz3 directly.
+    const smt_snapshot = smt.items;
+    const verdict = verifySmt(allocator, smt_snapshot, 5_000);
+    const status_str = try allocator.dupe(u8, verdictTag(verdict));
+
+    // 4. CATEGORY THEORY RIGOR
     var algebra = std.ArrayList(u8).init(allocator);
     errdefer algebra.deinit();
     const aw = algebra.writer();
@@ -130,7 +185,7 @@ fn synthesizeAlgebraicBlueprint(
         .vector_id = vec,
         .blueprint_smt = try smt.toOwnedSlice(),
         .blueprint_algebra = try algebra.toOwnedSlice(),
-        .verification_status = "SMT_VERIFIED_FOUNDATIONAL_TRUTH",
+        .verification_status = status_str,
     };
 }
 

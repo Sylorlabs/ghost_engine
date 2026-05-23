@@ -1,0 +1,7 @@
+=== MMMMP QUALITY PROBE ===
+samples=4 seed=0x4444111122223334 seed_mmmp=3 mmmm_outer=4 tier2_outer=6 tier1_outer=8 tier0_inner=150
+sample 1/4: anchor=47.6744 holdout=30.9057 best=30.9057
+sample 2/4: anchor=47.6838 holdout=30.9057 best=30.9057
+sample 3/4: anchor=47.6930 holdout=30.9057 best=30.9057
+sample 4/4: anchor=47.6100 holdout=38.4430 best=38.4430
+BEST_HOLDOUT = 38.4430 sample=3 anchor=47.6100

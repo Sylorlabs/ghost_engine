@@ -1,0 +1,22 @@
+=== MMMP HOLDOUT HILLCLIMB ===
+iters=18 seed=0xC0DEC0DE5A5A0001 start=results/phaseB_mmm_qd_bootstrap_1111_64/BEST_champion_mmm.csv mmm_outer=6 tier1_outer=8 tier0_inner=150 shaped=false constrained=true constrained_meta=true constrained_mm=true wide_meta=true wide_mm=true restart_every=0
+iter 0: anchor=417.9718 holdout=417.9718 BEST
+iter 1/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 2/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 3/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 4/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 5/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 6/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 7/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 8/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 9/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 10/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 11/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 12/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 13/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 14/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 15/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 16/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 17/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+iter 18/18: anchor=417.9718 holdout=417.9718 current=417.9718 best=417.9718 
+BEST_HOLDOUT = 417.9718 iter=0 anchor=417.9718

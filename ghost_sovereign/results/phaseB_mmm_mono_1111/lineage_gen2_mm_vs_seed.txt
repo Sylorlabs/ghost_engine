@@ -1,0 +1,5 @@
+=== LINEAGE AUDIT ===
+kind=mm candidate=results/phaseB_mmm_mono_1111/gen_2_champion_mm.csv used=11
+has_eval=true has_accept=true has_call=false first_eval=3 first_accept=6 eval_before_accept=true
+against_count=3 exact_copy=false nearest_edit_distance=3 nearest_normalized=0.2727 nearest=results/mm_chain_par_1111/BEST_champion_meta_meta.csv
+lineage_verdict=NON_COPY_STRUCTURAL
