@@ -8,10 +8,10 @@ const c = @cImport({
 });
 
 pub const Verdict = enum {
-    verified,           // UNSAT for "exists bad input"   → property holds
-    counter_example,    // SAT for "exists bad input"     → property fails
-    unknown,            // solver timeout / incomplete
-    error_smt,          // bad SMT or runtime error
+    verified, // UNSAT for "exists bad input"   → property holds
+    counter_example, // SAT for "exists bad input"     → property fails
+    unknown, // solver timeout / incomplete
+    error_smt, // bad SMT or runtime error
 };
 
 pub const VerifyResult = struct {
@@ -132,6 +132,10 @@ pub const MixerOp = enum(u8) {
     AND_NOT = 8,
     OR_SHIFT = 9,
     CALL_LIB = 10,
+    ROTR = 11,
+    BSWAP = 12,
+    MUM = 13,
+    ADD_ROT = 14,
 };
 
 pub const MixerInstr = struct {
@@ -266,7 +270,7 @@ fn emitMixerProgram(
                 .{ new_name, lhs_name_a, lhs_name_b },
             ),
             .OR_SHIFT => try w.print(
-                "(assert (= {s} (bvor {s} (bvshl {s} (_ bv{d} {d})))))\n",
+                "(assert (= {s} (bvor {s} (bvlshr {s} (_ bv{d} {d})))))\n",
                 .{ new_name, lhs_name_a, lhs_name_b, shift_amt, W },
             ),
             .CALL_LIB => {
@@ -290,11 +294,68 @@ fn emitMixerProgram(
                     const sub_ns = try std.fmt.allocPrint(allocator, "{s}_c{d}", .{ ns, call_id });
                     defer allocator.free(sub_ns);
                     const final_ver = try emitMixerProgram(
-                        allocator, w, side, sub_ns,
-                        lb.extras[idx], num_bits, lib, depth + 1, call_counter,
+                        allocator,
+                        w,
+                        side,
+                        sub_ns,
+                        lb.extras[idx],
+                        num_bits,
+                        lib,
+                        depth + 1,
+                        call_counter,
                         lhs_name_a,
                     );
                     try w.print("(assert (= {s} reg{d}_v{d}_{s}{s}))\n", .{ new_name, NumRegs - 1, final_ver, side, sub_ns });
+                }
+            },
+            .ROTR => {
+                if (shift_amt == 0 or shift_amt >= W) {
+                    try w.print("(assert (= {s} {s}))\n", .{ new_name, lhs_name_a });
+                } else {
+                    try w.print(
+                        "(assert (= {s} (bvor (bvlshr {s} (_ bv{d} {d})) (bvshl {s} (_ bv{d} {d})))))\n",
+                        .{ new_name, lhs_name_a, shift_amt, W, lhs_name_a, W - shift_amt, W },
+                    );
+                }
+            },
+            .BSWAP => {
+                if (W == 16) {
+                    try w.print(
+                        "(assert (= {s} (concat ((_ extract 7 0) {s}) ((_ extract 15 8) {s}))))\n",
+                        .{ new_name, lhs_name_a, lhs_name_a },
+                    );
+                } else if (W == 32) {
+                    try w.print(
+                        "(assert (= {s} (concat ((_ extract 7 0) {s}) ((_ extract 15 8) {s}) ((_ extract 23 16) {s}) ((_ extract 31 24) {s}))))\n",
+                        .{ new_name, lhs_name_a, lhs_name_a, lhs_name_a, lhs_name_a },
+                    );
+                } else if (W == 64) {
+                    try w.print(
+                        "(assert (= {s} (concat ((_ extract 7 0) {s}) ((_ extract 15 8) {s}) ((_ extract 23 16) {s}) ((_ extract 31 24) {s}) ((_ extract 39 32) {s}) ((_ extract 47 40) {s}) ((_ extract 55 48) {s}) ((_ extract 63 56) {s}))))\n",
+                        .{ new_name, lhs_name_a, lhs_name_a, lhs_name_a, lhs_name_a, lhs_name_a, lhs_name_a, lhs_name_a, lhs_name_a },
+                    );
+                } else {
+                    // Widths below one byte, or non-byte-aligned solver probes,
+                    // treat byte-swap as identity rather than inventing
+                    // fractional-byte semantics.
+                    try w.print("(assert (= {s} {s}))\n", .{ new_name, lhs_name_a });
+                }
+            },
+            .MUM => {
+                const wide: u16 = @as(u16, W) * 2;
+                try w.print(
+                    "(assert (= {s} (let ((prod (bvmul ((_ zero_extend {d}) {s}) ((_ zero_extend {d}) (bvor {s} (_ bv1 {d})))))) (bvxor ((_ extract {d} 0) prod) ((_ extract {d} {d}) prod)))))\n",
+                    .{ new_name, W, lhs_name_a, W, lhs_name_b, W, W - 1, wide - 1, W },
+                );
+            },
+            .ADD_ROT => {
+                if (shift_amt == 0 or shift_amt >= W) {
+                    try w.print("(assert (= {s} (bvadd {s} {s})))\n", .{ new_name, lhs_name_a, lhs_name_b });
+                } else {
+                    try w.print(
+                        "(assert (= {s} (let ((sum (bvadd {s} {s}))) (bvor (bvshl sum (_ bv{d} {d})) (bvlshr sum (_ bv{d} {d}))))))\n",
+                        .{ new_name, lhs_name_a, lhs_name_b, shift_amt, W, W - shift_amt, W },
+                    );
                 }
             },
         }

@@ -1,0 +1,172 @@
+full_run_start=2026-05-22T19:07:12-07:00
+cwd=/home/micah/Desktop/sylorlabs projects/ghost_engine/ghost_sovereign
+zig=0.14.1
+RNG_test=/home/micah/.local/bin/RNG_test
+sample_counts=9:const FitSamples = 64;;10:const PeriodSamples = 4096;;11:const ChiSqSamples = 4096;;12:const BalanceSamples = 256;;
+ROOT_START label=root_f00d seed=0xF00DCAFE12345678 time=2026-05-22T19:07:12-07:00
+=== MUL-FREE MATCHED-BUDGET COMPARISON ===
+pilot=10000x100 full=100000x200 seeds=1 practrand=0 max_tier=64G
+pilot     mul_free seed=1 composite=45.8750 av=31.949 bal=31.977 chisq=241.5 len=7 hash=0x7C977F44D6E1E44A pr_top=not_run verify=not_run
+pilot     no_carry seed=1 composite=45.6702 av=31.984 bal=31.988 chisq=266.5 len=8 hash=0xB526D34A4381D2BF pr_top=not_run verify=not_run
+pilot unrestricted seed=1 composite=47.9927 av=31.999 bal=32.000 chisq=249.1 len=4 hash=0xBA37331C15AE291 pr_top=not_run verify=not_run
+ full     mul_free seed=1 composite=46.5000 av=32.000 bal=32.000 chisq=214.6 len=7 hash=0x2C88B4AEE6847162 pr_top=not_run verify=not_run
+ full     no_carry seed=1 composite=46.7838 av=31.984 bal=32.000 chisq=261.0 len=6 hash=0xD6D419BFC5BFB4F2 pr_top=not_run verify=not_run
+ full unrestricted seed=1 composite=47.9976 av=32.000 bal=32.000 chisq=240.6 len=4 hash=0xEF5653D5A1243519 pr_top=not_run verify=not_run
+comparison=results/phaseF_mul_free_challenge_full_run_20260523/root_f00d/comparison.txt
+ROOT_SEARCH_DONE label=root_f00d time=2026-05-22T23:18:20-07:00
+VALIDATE label=full_root_f00d_mul_free champion=results/phaseF_mul_free_challenge_full_run_20260523/root_f00d/champion_full_mul_free_seed1.csv mode=mul_free
+  PractRand tier=1M label=full_root_f00d_mul_free start=2026-05-22T23:18:20-07:00
+  PractRand tier=1M label=full_root_f00d_mul_free FAIL
+RNG_test using PractRand version 0.96
+RNG = RNG_stdin64, seed = unknown
+test set = core, folding = standard (64 bit)
+
+rng=RNG_stdin64, seed=unknown
+length= 1 megabyte (2^20 bytes), time= 0.1 seconds
+  Test Name                         Raw       Processed     Evaluation       
+  BRank(12):score:256(10)           R= +2507  p~=  1          FAIL !!!!!!!!  
+  [Low16/64]BRank(12):score:128(9)  R=+625.3  p~=  1          FAIL !!!!!!!!  
+  ...and 99 test result(s) without anomalies
+
+VALIDATE label=full_root_f00d_no_carry champion=results/phaseF_mul_free_challenge_full_run_20260523/root_f00d/champion_full_no_carry_seed1.csv mode=no_carry
+  PractRand tier=1M label=full_root_f00d_no_carry start=2026-05-22T23:18:20-07:00
+  PractRand tier=1M label=full_root_f00d_no_carry FAIL
+RNG_test using PractRand version 0.96
+RNG = RNG_stdin64, seed = unknown
+test set = core, folding = standard (64 bit)
+
+rng=RNG_stdin64, seed=unknown
+length= 1 megabyte (2^20 bytes), time= 0.1 seconds
+  Test Name                         Raw       Processed     Evaluation       
+  BRank(12):score:256(10)           R= +2527  p~=  1          FAIL !!!!!!!!  
+  [Low16/64]BRank(12):score:128(9)  R=+636.2  p~=  1          FAIL !!!!!!!!  
+  ...and 99 test result(s) without anomalies
+
+VALIDATE label=full_root_f00d_unrestricted champion=results/phaseF_mul_free_challenge_full_run_20260523/root_f00d/champion_full_unrestricted_seed1.csv mode=unrestricted
+  PractRand tier=1M label=full_root_f00d_unrestricted start=2026-05-22T23:18:21-07:00
+  PractRand tier=1M label=full_root_f00d_unrestricted PASS
+  PractRand tier=64M label=full_root_f00d_unrestricted start=2026-05-22T23:18:21-07:00
+  PractRand tier=64M label=full_root_f00d_unrestricted PASS
+  verify_cli label=full_root_f00d_unrestricted start=2026-05-22T23:18:22-07:00
+  verify_cli label=full_root_f00d_unrestricted FAILED_OR_UNKNOWN
+verify_cli  domain=mixer  csv=results/phaseF_mul_free_challenge_full_run_20260523/root_f00d/champion_full_unrestricted_seed1.csv  bits=8  timeout_ms=30000
+loaded 4 instructions
+
+verdict: COUNTER-EXAMPLE (SAT — property fails)
+elapsed: 23 ms
+detail:
+sat
+
+ROOT_DONE label=root_f00d time=2026-05-22T23:18:22-07:00
+ROOT_START label=root_1111 seed=0x1111222233334444 time=2026-05-22T23:18:22-07:00
+=== MUL-FREE MATCHED-BUDGET COMPARISON ===
+pilot=10000x100 full=100000x200 seeds=1 practrand=0 max_tier=64G
+pilot     mul_free seed=1 composite=45.9658 av=31.999 bal=31.996 chisq=221.8 len=8 hash=0x6DD36E95419C3419 pr_top=not_run verify=not_run
+pilot     no_carry seed=1 composite=45.6639 av=31.938 bal=31.988 chisq=270.3 len=7 hash=0xAA9B7EAE75E3BA80 pr_top=not_run verify=not_run
+pilot unrestricted seed=1 composite=47.9976 av=32.000 bal=32.000 chisq=245.9 len=4 hash=0x5B7D4693302AB4D7 pr_top=not_run verify=not_run
+ full     mul_free seed=1 composite=46.5508 av=31.969 bal=31.973 chisq=253.1 len=6 hash=0xA1930A61C890BF79 pr_top=not_run verify=not_run
+ full     no_carry seed=1 composite=46.7852 av=32.000 bal=32.043 chisq=219.1 len=6 hash=0x65CA499B4F5799B6 pr_top=not_run verify=not_run
+ full unrestricted seed=1 composite=47.9976 av=32.000 bal=32.000 chisq=222.4 len=4 hash=0x80449DE2095B0FA9 pr_top=not_run verify=not_run
+comparison=results/phaseF_mul_free_challenge_full_run_20260523/root_1111/comparison.txt
+ROOT_SEARCH_DONE label=root_1111 time=2026-05-23T03:17:07-07:00
+VALIDATE label=full_root_1111_mul_free champion=results/phaseF_mul_free_challenge_full_run_20260523/root_1111/champion_full_mul_free_seed1.csv mode=mul_free
+  PractRand tier=1M label=full_root_1111_mul_free start=2026-05-23T03:17:07-07:00
+  PractRand tier=1M label=full_root_1111_mul_free FAIL
+RNG_test using PractRand version 0.96
+RNG = RNG_stdin64, seed = unknown
+test set = core, folding = standard (64 bit)
+
+rng=RNG_stdin64, seed=unknown
+length= 1 megabyte (2^20 bytes), time= 0.1 seconds
+  Test Name                         Raw       Processed     Evaluation       
+  BRank(12):score:256(10)           R= +2527  p~=  1          FAIL !!!!!!!!  
+  [Low16/64]BRank(12):score:128(9)  R=+629.7  p~=  1          FAIL !!!!!!!!  
+  ...and 99 test result(s) without anomalies
+
+VALIDATE label=full_root_1111_no_carry champion=results/phaseF_mul_free_challenge_full_run_20260523/root_1111/champion_full_no_carry_seed1.csv mode=no_carry
+  PractRand tier=1M label=full_root_1111_no_carry start=2026-05-23T03:17:08-07:00
+  PractRand tier=1M label=full_root_1111_no_carry FAIL
+RNG_test using PractRand version 0.96
+RNG = RNG_stdin64, seed = unknown
+test set = core, folding = standard (64 bit)
+
+rng=RNG_stdin64, seed=unknown
+length= 1 megabyte (2^20 bytes), time= 0.1 seconds
+  Test Name                         Raw       Processed     Evaluation       
+  BRank(12):score:256(10)           R= +2680  p~=  1          FAIL !!!!!!!!  
+  [Low16/64]BRank(12):score:128(9)  R=+846.7  p~=  1          FAIL !!!!!!!!  
+  [Low4/64]BRank(12):score:64(7)    R=+182.4  p~=  1          FAIL !!!!!!!!  
+  [Low1/64]BRank(12):score:64(1)    R= +68.9  p~=  1          FAIL !!!!!!!!  
+  ...and 97 test result(s) without anomalies
+
+VALIDATE label=full_root_1111_unrestricted champion=results/phaseF_mul_free_challenge_full_run_20260523/root_1111/champion_full_unrestricted_seed1.csv mode=unrestricted
+  PractRand tier=1M label=full_root_1111_unrestricted start=2026-05-23T03:17:08-07:00
+  PractRand tier=1M label=full_root_1111_unrestricted FAIL
+RNG_test using PractRand version 0.96
+RNG = RNG_stdin64, seed = unknown
+test set = core, folding = standard (64 bit)
+
+rng=RNG_stdin64, seed=unknown
+length= 1 megabyte (2^20 bytes), time= 0.1 seconds
+  Test Name                         Raw       Processed     Evaluation       
+  BCFN(2+0,13-7U)                   R=  -5.1  p =1-1.0e-3   unusual          
+  ...and 100 test result(s) without anomalies
+
+ROOT_DONE label=root_1111 time=2026-05-23T03:17:08-07:00
+ROOT_START label=root_abcd seed=0xABCDEF0123456789 time=2026-05-23T03:17:08-07:00
+=== MUL-FREE MATCHED-BUDGET COMPARISON ===
+pilot=10000x100 full=100000x200 seeds=1 practrand=0 max_tier=64G
+pilot     mul_free seed=1 composite=45.8022 av=32.000 bal=31.961 chisq=194.5 len=8 hash=0x6B367F3FCDA7443E pr_top=not_run verify=not_run
+pilot     no_carry seed=1 composite=46.2552 av=32.000 bal=31.957 chisq=258.0 len=7 hash=0x477C3BD753CC92F3 pr_top=not_run verify=not_run
+pilot unrestricted seed=1 composite=47.9927 av=31.999 bal=32.000 chisq=249.1 len=4 hash=0x9155E4C9EBC3AE6 pr_top=not_run verify=not_run
+ full     mul_free seed=1 composite=46.4922 av=32.016 bal=32.070 chisq=223.9 len=6 hash=0xDD263810273DA084 pr_top=not_run verify=not_run
+ full     no_carry seed=1 composite=46.9805 av=32.000 bal=32.004 chisq=252.5 len=6 hash=0x17A8C30FA74133BF pr_top=not_run verify=not_run
+ full unrestricted seed=1 composite=47.9976 av=32.000 bal=32.000 chisq=235.3 len=4 hash=0x93D08E1548860601 pr_top=not_run verify=not_run
+comparison=results/phaseF_mul_free_challenge_full_run_20260523/root_abcd/comparison.txt
+ROOT_SEARCH_DONE label=root_abcd time=2026-05-23T07:13:31-07:00
+VALIDATE label=full_root_abcd_mul_free champion=results/phaseF_mul_free_challenge_full_run_20260523/root_abcd/champion_full_mul_free_seed1.csv mode=mul_free
+  PractRand tier=1M label=full_root_abcd_mul_free start=2026-05-23T07:13:31-07:00
+  PractRand tier=1M label=full_root_abcd_mul_free FAIL
+RNG_test using PractRand version 0.96
+RNG = RNG_stdin64, seed = unknown
+test set = core, folding = standard (64 bit)
+
+rng=RNG_stdin64, seed=unknown
+length= 1 megabyte (2^20 bytes), time= 0.1 seconds
+  Test Name                         Raw       Processed     Evaluation       
+  BRank(12):score:256(10)           R= +2509  p~=  1          FAIL !!!!!!!!  
+  [Low16/64]BRank(12):score:128(9)  R=+621.7  p~=  1          FAIL !!!!!!!!  
+  ...and 99 test result(s) without anomalies
+
+VALIDATE label=full_root_abcd_no_carry champion=results/phaseF_mul_free_challenge_full_run_20260523/root_abcd/champion_full_no_carry_seed1.csv mode=no_carry
+  PractRand tier=1M label=full_root_abcd_no_carry start=2026-05-23T07:13:32-07:00
+  PractRand tier=1M label=full_root_abcd_no_carry FAIL
+RNG_test using PractRand version 0.96
+RNG = RNG_stdin64, seed = unknown
+test set = core, folding = standard (64 bit)
+
+rng=RNG_stdin64, seed=unknown
+length= 1 megabyte (2^20 bytes), time= 0.1 seconds
+  Test Name                         Raw       Processed     Evaluation       
+  BRank(12):score:256(10)           R= +2554  p~=  1          FAIL !!!!!!!!  
+  [Low16/64]BRank(12):score:128(9)  R=+647.2  p~=  1          FAIL !!!!!!!!  
+  [Low1/64]BRank(12):score:64(1)    R= +37.2  p~=  1          FAIL !!!!!!!!  
+  ...and 98 test result(s) without anomalies
+
+VALIDATE label=full_root_abcd_unrestricted champion=results/phaseF_mul_free_challenge_full_run_20260523/root_abcd/champion_full_unrestricted_seed1.csv mode=unrestricted
+  PractRand tier=1M label=full_root_abcd_unrestricted start=2026-05-23T07:13:32-07:00
+  PractRand tier=1M label=full_root_abcd_unrestricted PASS
+  PractRand tier=64M label=full_root_abcd_unrestricted start=2026-05-23T07:13:32-07:00
+  PractRand tier=64M label=full_root_abcd_unrestricted PASS
+  verify_cli label=full_root_abcd_unrestricted start=2026-05-23T07:13:33-07:00
+  verify_cli label=full_root_abcd_unrestricted FAILED_OR_UNKNOWN
+verify_cli  domain=mixer  csv=results/phaseF_mul_free_challenge_full_run_20260523/root_abcd/champion_full_unrestricted_seed1.csv  bits=8  timeout_ms=30000
+loaded 4 instructions
+
+verdict: COUNTER-EXAMPLE (SAT — property fails)
+elapsed: 31 ms
+detail:
+sat
+
+ROOT_DONE label=root_abcd time=2026-05-23T07:13:33-07:00
+full_run_done=2026-05-23T07:13:33-07:00

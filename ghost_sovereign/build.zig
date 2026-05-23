@@ -482,6 +482,46 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(program_synthesis_v3);
 
+    const mul_free_challenge = b.addExecutable(.{
+        .name = "mul_free_challenge",
+        .root_source_file = b.path("src/adapters/mul_free_challenge.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(mul_free_challenge);
+
+    const practrand_emit_mulfree = b.addExecutable(.{
+        .name = "practrand_emit_mulfree",
+        .root_source_file = b.path("src/adapters/practrand_emit_mulfree.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(practrand_emit_mulfree);
+
+    const mul_free_comparison = b.addExecutable(.{
+        .name = "mul_free_comparison",
+        .root_source_file = b.path("src/adapters/mul_free_comparison.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(mul_free_comparison);
+
+    const domain_u64_mixer_mulfree_tests = b.addTest(.{
+        .root_source_file = b.path("src/adapters/domain_u64_mixer_mulfree.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const run_domain_u64_mixer_mulfree_tests = b.addRunArtifact(domain_u64_mixer_mulfree_tests);
+    test_step.dependOn(&run_domain_u64_mixer_mulfree_tests.step);
+
+    const practrand_emit_mulfree_tests = b.addTest(.{
+        .root_source_file = b.path("src/adapters/practrand_emit_mulfree.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const run_practrand_emit_mulfree_tests = b.addRunArtifact(practrand_emit_mulfree_tests);
+    test_step.dependOn(&run_practrand_emit_mulfree_tests.step);
+
     const reachability_tester = b.addExecutable(.{
         .name = "reachability_tester",
         .root_source_file = b.path("src/adapters/reachability_tester.zig"),

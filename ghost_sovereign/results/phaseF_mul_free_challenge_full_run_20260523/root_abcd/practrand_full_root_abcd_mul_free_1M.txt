@@ -1,0 +1,11 @@
+RNG_test using PractRand version 0.96
+RNG = RNG_stdin64, seed = unknown
+test set = core, folding = standard (64 bit)
+
+rng=RNG_stdin64, seed=unknown
+length= 1 megabyte (2^20 bytes), time= 0.1 seconds
+  Test Name                         Raw       Processed     Evaluation       
+  BRank(12):score:256(10)           R= +2509  p~=  1          FAIL !!!!!!!!  
+  [Low16/64]BRank(12):score:128(9)  R=+621.7  p~=  1          FAIL !!!!!!!!  
+  ...and 99 test result(s) without anomalies
+
