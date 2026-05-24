@@ -668,6 +668,59 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(meta_mixer_export_mulfree);
 
+    // Exp5: max_len=24 MUL-free meta-engine
+    const mmm_holdout_hillclimb_mulfree_l24 = b.addExecutable(.{
+        .name = "mmm_holdout_hillclimb_mulfree_l24",
+        .root_source_file = b.path("src/adapters/mmm_holdout_hillclimb_mulfree_l24.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(mmm_holdout_hillclimb_mulfree_l24);
+
+    const meta_mixer_export_mulfree_l24 = b.addExecutable(.{
+        .name = "meta_mixer_export_mulfree_l24",
+        .root_source_file = b.path("src/adapters/meta_mixer_export_mulfree_l24.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(meta_mixer_export_mulfree_l24);
+
+    // Exp6: sort-net-N8 3-tier meta-engine
+    const mmm_holdout_hillclimb_sort = b.addExecutable(.{
+        .name = "mmm_holdout_hillclimb_sort",
+        .root_source_file = b.path("src/adapters/mmm_holdout_hillclimb_sort.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(mmm_holdout_hillclimb_sort);
+
+    // Exp7: SAC-fitness meta-engine runner
+    const mmm_holdout_hillclimb_sac = b.addExecutable(.{
+        .name = "mmm_holdout_hillclimb_sac",
+        .root_source_file = b.path("src/adapters/mmm_holdout_hillclimb_sac.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(mmm_holdout_hillclimb_sac);
+
+    // Exp8: dual-output mixer meta-engine
+    const mmm_holdout_hillclimb_dual = b.addExecutable(.{
+        .name = "mmm_holdout_hillclimb_dual",
+        .root_source_file = b.path("src/adapters/mmm_holdout_hillclimb_dual.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(mmm_holdout_hillclimb_dual);
+
+    // Exp9: opset-discovery meta-engine
+    const mmm_holdout_hillclimb_opset = b.addExecutable(.{
+        .name = "mmm_holdout_hillclimb_opset",
+        .root_source_file = b.path("src/adapters/mmm_holdout_hillclimb_opset.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(mmm_holdout_hillclimb_opset);
+
     const mmmm_qd_probe = b.addExecutable(.{
         .name = "mmmm_qd_probe",
         .root_source_file = b.path("src/adapters/mmmm_qd_probe.zig"),

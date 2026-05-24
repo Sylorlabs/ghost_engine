@@ -74,6 +74,46 @@ pub var anti_human_penalty: f64 = 0;
 // should look structurally different from mixers. Off by default.
 pub var compressor_mode: bool = false;
 
+// Exp7 (2026-05-23): when true, evaluateQuality uses Strict Avalanche Criterion
+// instead of the composite mixer metric. SAC measures per-(input_bit, output_bit)
+// flip probability deviation from 0.5 across 64×64 pairs. Composite = negative
+// mean absolute deviation scaled to [-200, 0]. Perfect SAC → composite = 0.
+pub var sac_fitness: bool = false;
+
+const SacSamples: usize = 32; // 256→32: 8x speedup; 32 samples/bit still gives reliable mean over 4096 (input,output) pairs
+
+fn sacFitness(p: Program) f64 {
+    var total_abs_dev: f64 = 0;
+    var rng: u64 = 0xBABE_C0DE_F00D_ACE5;
+    var input_bit: u6 = 0;
+    while (true) : (input_bit += 1) {
+        var flip_counts = [_]u32{0} ** 64;
+        var s: usize = 0;
+        while (s < SacSamples) : (s += 1) {
+            rng = engine.smix(rng);
+            const x = rng;
+            const y = p.execute(x);
+            const x_flip = x ^ (@as(u64, 1) << input_bit);
+            const y_flip = p.execute(x_flip);
+            const diff = y ^ y_flip;
+            var ob: u6 = 0;
+            while (true) : (ob += 1) {
+                if ((diff >> ob) & 1 == 1) flip_counts[@intCast(ob)] += 1;
+                if (ob == 63) break;
+            }
+        }
+        var ob: usize = 0;
+        while (ob < 64) : (ob += 1) {
+            const prob: f64 = @as(f64, @floatFromInt(flip_counts[ob])) / @as(f64, @floatFromInt(SacSamples));
+            total_abs_dev += @abs(prob - 0.5);
+        }
+        if (input_bit == 63) break;
+    }
+    // 64 * 64 = 4096 pairs. Mean abs dev ∈ [0, 0.5]. Negate and scale to [-200, 0].
+    const mean_dev = total_abs_dev / 4096.0;
+    return -mean_dev * 200.0 - @as(f64, @floatFromInt(p.used)) * 0.5;
+}
+
 // Exp2 (2026-05-23) Approach-B runtime flag: ban MUL/MUM/SPLITMIX_STEP/CALL_LIB
 // so the inner search uses only the 11 carry/shift/logic ops. Must produce
 // byte-identical search trajectories to the comptime approach-A binary
@@ -252,6 +292,10 @@ fn chiSqFn(p: Program) f64 {
 }
 
 pub fn evaluateQuality(p: Program) Quality {
+    if (sac_fitness) {
+        const sc = sacFitness(p);
+        return .{ .avalanche = 0, .balance = 0, .period = 0, .chisq = 0, .composite = sc };
+    }
     const av = avalanche(p);
     const bal = balanceFn(p);
     const per = periodEst(p, 0x7E57_0001);

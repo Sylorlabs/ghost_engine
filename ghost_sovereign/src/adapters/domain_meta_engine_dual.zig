@@ -1,5 +1,5 @@
 const std = @import("std");
-const target = @import("domain_sort_net.zig");
+const target = @import("domain_u64_mixer_dual.zig");
 
 // --- META-DOMAIN: ENGINE-AS-PROGRAM ---
 //
@@ -13,25 +13,25 @@ const target = @import("domain_sort_net.zig");
 // outer search includes CALL_META(prior) primitives composing
 // previously-discovered engines.
 
-pub const META_DOMAIN_NAME: []const u8 = "meta-engine/u64-mixer";
+pub const META_DOMAIN_NAME: []const u8 = "meta-engine/u64-mixer-dual";
 
 const NumScratchRegs = 4;
 pub const MaxMetaLen = 16;
 pub const MinMetaLen = 4;
 
 pub const MetaOp = enum(u4) {
-    INIT_CUR = 0,           // cand_cur := randomProgram(rng); q_cur := -inf
-    MUTATE_CUR = 1,         // cand_cur := mutate(cand_cur, rng)
+    INIT_CUR = 0, // cand_cur := randomProgram(rng); q_cur := -inf
+    MUTATE_CUR = 1, // cand_cur := mutate(cand_cur, rng)
     MUTATE_BEST_TO_CUR = 2, // cand_cur := mutate(cand_best, rng)
-    CROSS_BEST_CUR = 3,     // cand_cur := crossover(cand_best, cand_cur, rng)
-    EVAL_CUR = 4,           // q_cur := quality(cand_cur)
-    ACCEPT_IF_BETTER = 5,   // if q_cur > q_best: best := cur
-    ACCEPT_SA = 6,          // metropolis(regs[0] as temperature)
-    RESET_CUR_TO_BEST = 7,  // cand_cur := cand_best; q_cur := q_best
-    RAND_REG = 8,           // regs[dst] := smix(rng)
-    REG_XOR = 9,            // regs[dst] := regs[src1] ^ regs[src2]
-    REG_SHR = 10,           // regs[dst] := regs[src1] >> (regs[src2] & 63)
-    TEMP_DECAY = 11,        // regs[0] := regs[0] - (regs[0] >> regs[src1])
+    CROSS_BEST_CUR = 3, // cand_cur := crossover(cand_best, cand_cur, rng)
+    EVAL_CUR = 4, // q_cur := quality(cand_cur)
+    ACCEPT_IF_BETTER = 5, // if q_cur > q_best: best := cur
+    ACCEPT_SA = 6, // metropolis(regs[0] as temperature)
+    RESET_CUR_TO_BEST = 7, // cand_cur := cand_best; q_cur := q_best
+    RAND_REG = 8, // regs[dst] := smix(rng)
+    REG_XOR = 9, // regs[dst] := regs[src1] ^ regs[src2]
+    REG_SHR = 10, // regs[dst] := regs[src1] >> (regs[src2] & 63)
+    TEMP_DECAY = 11, // regs[0] := regs[0] - (regs[0] >> regs[src1])
     NOP = 12,
 };
 
@@ -50,6 +50,14 @@ pub const MetaProgram = struct {
     instructions: [MaxMetaLen]MetaInstr,
     used: u8,
 };
+
+// Opt-in structural bootstrap: generated MetaPrograms start with the
+// minimal "make candidate, evaluate, accept" loop, and mutations repair
+// missing/misordered EVAL/ACCEPT instructions. This is off by default so
+// older artifact replays are unchanged.
+pub var constrained_init: bool = false;
+
+pub var repair_meta_ordering: bool = false;
 
 fn smix(x: u64) u64 {
     var z = x +% 0x9E3779B97F4A7C15;
@@ -76,8 +84,58 @@ const InnerState = struct {
 
 const NegInf: f64 = -std.math.inf(f64);
 
+pub fn repairMetaOrdering(meta: MetaProgram) MetaProgram {
+    var q = meta;
+    var first_eval: ?usize = null;
+    var first_accept: ?usize = null;
+    var i: usize = 0;
+    while (i < q.used) : (i += 1) {
+        switch (q.instructions[i].op) {
+            .EVAL_CUR => {
+                if (first_eval == null) first_eval = i;
+            },
+            .ACCEPT_IF_BETTER, .ACCEPT_SA => {
+                if (first_accept == null) first_accept = i;
+            },
+            else => {},
+        }
+    }
+
+    if (first_eval == null) {
+        const idx: usize = if (q.used > 0) q.used - 1 else 0;
+        q.instructions[idx] = .{ .op = .EVAL_CUR, .dst = 0, .src1 = 0, .src2 = 0 };
+        if (q.used == 0) q.used = 1;
+        first_eval = idx;
+    }
+    if (first_accept == null) {
+        const idx = @min(q.used, first_eval.? + 1);
+        if (q.used < MaxMetaLen) {
+            var j = q.used;
+            while (j > idx) : (j -= 1) q.instructions[j] = q.instructions[j - 1];
+            q.instructions[idx] = .{ .op = .ACCEPT_IF_BETTER, .dst = 0, .src1 = 0, .src2 = 0 };
+            q.used += 1;
+            first_accept = idx;
+        } else {
+            const replace_idx = if (idx < q.used) idx else q.used - 1;
+            q.instructions[replace_idx] = .{ .op = .ACCEPT_IF_BETTER, .dst = 0, .src1 = 0, .src2 = 0 };
+            first_accept = replace_idx;
+        }
+    }
+    if (first_accept) |a| {
+        if (first_eval) |e| {
+            if (a < e) {
+                const tmp = q.instructions[a];
+                q.instructions[a] = q.instructions[e];
+                q.instructions[e] = tmp;
+            }
+        }
+    }
+    return q;
+}
+
 // Run the meta-program for `steps` iterations. Return q_best.
 pub fn run(meta: MetaProgram, steps: u32, root_seed: u64) f64 {
+    const effective_meta = if (repair_meta_ordering) repairMetaOrdering(meta) else meta;
     var r0: u64 = root_seed ^ 0xA1B2C3D4E5F60718;
     const init_prog = target.randomProgram(&r0);
     var st = InnerState{
@@ -93,11 +151,35 @@ pub fn run(meta: MetaProgram, steps: u32, root_seed: u64) f64 {
     var s: u32 = 0;
     while (s < steps) : (s += 1) {
         var i: usize = 0;
-        while (i < meta.used) : (i += 1) {
-            execOp(&st, meta.instructions[i]);
+        while (i < effective_meta.used) : (i += 1) {
+            execOp(&st, effective_meta.instructions[i]);
         }
     }
     return st.q_best;
+}
+
+pub fn runReturningChampion(meta: MetaProgram, steps: u32, root_seed: u64) struct { q_best: f64, program_best: target.Program } {
+    const effective_meta = if (repair_meta_ordering) repairMetaOrdering(meta) else meta;
+    var r0: u64 = root_seed ^ 0xA1B2C3D4E5F60718;
+    const init_prog = target.randomProgram(&r0);
+    var st = InnerState{
+        .rng = r0,
+        .cand_cur = init_prog,
+        .cand_best = init_prog,
+        .q_cur = NegInf,
+        .q_best = NegInf,
+        .regs = .{ 0x100, 1, 0, 0 },
+        .cur_evaluated = false,
+    };
+
+    var s: u32 = 0;
+    while (s < steps) : (s += 1) {
+        var i: usize = 0;
+        while (i < effective_meta.used) : (i += 1) {
+            execOp(&st, effective_meta.instructions[i]);
+        }
+    }
+    return .{ .q_best = st.q_best, .program_best = st.cand_best };
 }
 
 fn execOp(st: *InnerState, ins: MetaInstr) void {
@@ -127,12 +209,14 @@ fn execOp(st: *InnerState, ins: MetaInstr) void {
             if (st.q_best == NegInf) {
                 st.q_best = st.q_cur;
                 st.cand_best = st.cand_cur;
+                target.tryGraduateMacro(st.cand_cur);
             }
         },
         .ACCEPT_IF_BETTER => {
             if (st.cur_evaluated and st.q_cur > st.q_best) {
                 st.q_best = st.q_cur;
                 st.cand_best = st.cand_cur;
+                target.tryGraduateMacro(st.cand_cur);
             }
         },
         .ACCEPT_SA => {
@@ -140,6 +224,7 @@ fn execOp(st: *InnerState, ins: MetaInstr) void {
             if (st.q_cur > st.q_best) {
                 st.q_best = st.q_cur;
                 st.cand_best = st.cand_cur;
+                target.tryGraduateMacro(st.cand_cur);
                 return;
             }
             const temp_raw = st.regs[0];
@@ -204,6 +289,11 @@ pub fn randomMetaProgram(rng: *u64) MetaProgram {
     var p = MetaProgram{ .instructions = undefined, .used = len };
     var i: usize = 0;
     while (i < len) : (i += 1) p.instructions[i] = randomMetaInstr(rng);
+    if (constrained_init and len >= 3) {
+        p.instructions[0] = .{ .op = .INIT_CUR, .dst = 0, .src1 = 0, .src2 = 0 };
+        p.instructions[1] = .{ .op = .EVAL_CUR, .dst = 0, .src1 = 0, .src2 = 0 };
+        p.instructions[2] = .{ .op = .ACCEPT_IF_BETTER, .dst = 0, .src1 = 0, .src2 = 0 };
+    }
     return p;
 }
 
@@ -241,7 +331,7 @@ pub fn mutateMeta(p: MetaProgram, rng: *u64) MetaProgram {
         q.instructions[i] = q.instructions[j];
         q.instructions[j] = tmp;
     }
-    return q;
+    return if (constrained_init) repairMetaOrdering(q) else q;
 }
 
 pub fn opName(op: MetaOp) []const u8 {
@@ -270,36 +360,6 @@ pub fn printMeta(p: MetaProgram, writer: anytype) !void {
             i, opName(ins.op), ins.dst, ins.src1, ins.src2,
         });
     }
-}
-
-// Stubs expected by Tier-1/Tier-2 wrappers. Sort nets don't need ordering
-// repair or constrained init, but the higher-tier files reference these globals
-// and functions so they compile against either mixer or sort-net Tier-0.
-pub var constrained_init: bool = false;
-pub var repair_meta_ordering: bool = false;
-
-pub fn repairMetaOrdering(p: MetaProgram) MetaProgram {
-    return p; // no-op for sort nets
-}
-
-pub fn runReturningChampion(meta: MetaProgram, steps: u32, root_seed: u64) struct { q_best: f64, meta_best: MetaProgram } {
-    var r0: u64 = root_seed ^ 0xA1B2C3D4E5F60718;
-    const init_prog = target.randomProgram(&r0);
-    var st = InnerState{
-        .rng = r0,
-        .cand_cur = init_prog,
-        .cand_best = init_prog,
-        .q_cur = NegInf,
-        .q_best = NegInf,
-        .regs = .{ 0x100, 1, 0, 0 },
-        .cur_evaluated = false,
-    };
-    var s: u32 = 0;
-    while (s < steps) : (s += 1) {
-        var i: usize = 0;
-        while (i < meta.used) : (i += 1) execOp(&st, meta.instructions[i]);
-    }
-    return .{ .q_best = st.q_best, .meta_best = meta };
 }
 
 pub fn metaToCsv(p: MetaProgram, writer: anytype) !void {
