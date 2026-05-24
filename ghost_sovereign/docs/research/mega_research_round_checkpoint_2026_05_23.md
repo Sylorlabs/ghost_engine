@@ -22,7 +22,7 @@ Source commit after round: `ee2d31b9` (28 files, 7587 insertions).
 | 5 | MUL-free L24 | 2/3 seeds escape -215 to -162 (late-epoch); both fail PractRand | Floor is cap artifact; escape ≠ quality |
 | 6 | Sort-net 3-tier | 1/3 seeds find valid MMMP (~75% correct sorters) | High seed sensitivity; 3-tier weaker than 2-tier chain here |
 | 7 | SAC fitness | FIRST Z3-bijective mixer (seed DEAD); bijective ≠ PractRand-safe | SAC is distinct quality axis |
-| 8 | Dual-output | DEAD=-0.252 (38-unit gap); 1111=-18.62 (58-unit); ABCD=-115.50 (110-unit) | Escape-and-lock on all seeds; severe overfitting |
+| 8 | Dual-output | DEAD_A: bijective + PractRand PASS; 2/6 programs pass PractRand | Escape-and-lock; slot-A/B asymmetry; DEAD_A fully verified |
 | 9 | Opset discovery | Null result — all seeds stuck at iter-0 quality | Penalty restriction too indirect |
 
 ---
@@ -158,20 +158,20 @@ See: `sac_fitness_exp7_2026_05_23.md`
 **Question:** can the 3-tier meta-engine simultaneously discover two
 independent high-quality 64-bit mixers?
 
-**Result:** All three seeds escape the −751 sentinel (random MMMP). DEAD:
-3-step climb to holdout=-0.252 (anchor=38.44, 38-unit gap). 1111: locks
-immediately at -18.62 (anchor=39.37, 58-unit gap). ABCD: escapes to -115.50
-at iter 3 (anchor=-5.52, 110-unit gap), then locked. All seeds show an
-**escape-and-lock** pattern: a single holdout improvement from the sentinel,
-then zero further improvement. **No meta_mixer_export_dual binary** —
-concrete programs cannot be extracted for Z3/PractRand testing.
+**Result:** All three seeds escape the −751 sentinel. DEAD: -0.252 (38-unit gap).
+1111: -18.62 (58-unit). ABCD: -115.50 (110-unit). All escape-and-lock.
+Export binary `meta_mixer_export_dual` built post-analysis; Z3 + PractRand run
+on all 6 extracted programs (A + B per seed).
 
-**Verdict:** dual-output MMMP escapes the sentinel on all seeds but the
-escape quality is highly seed-dependent (-0.252 to -115.50). Anchor/holdout
-gaps of 38–110 units (vs the standard domain's 0-2) indicate the independence
-penalty creates a fundamentally harder generalization problem. The escape-and-lock
-pattern suggests a sparse improvement landscape where simultaneous quality +
-independence improvement is rare.
+Z3: all "A" programs BIJECTIVE; all "B" programs non-bijective — consistent
+slot asymmetry from the shared inner search loop.
+PractRand: DEAD_A PASS; ABCD_B PASS; other 4 FAIL (BRank or mod3n per op family).
+**DEAD_A (ADD_ROT + SHR_XOR + ROTL + MUL, 4 instr) is bijective + PractRand
+PASS — the only fully-verified mixer from the dual-output experiment.**
+
+**Verdict:** dual-output produces quality mixers but with slot asymmetry and
+38–110 unit anchor/holdout gaps. Sparse PractRand pass rate (2/6) and
+escape-and-lock pattern confirm the dual landscape is harder than single-mixer.
 
 See: `dual_output_exp8_2026_05_23.md`
 

@@ -685,6 +685,15 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(meta_mixer_export_mulfree_l24);
 
+    // Exp8: dual-output mixer export (extracts program A and B separately)
+    const meta_mixer_export_dual = b.addExecutable(.{
+        .name = "meta_mixer_export_dual",
+        .root_source_file = b.path("src/adapters/meta_mixer_export_dual.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(meta_mixer_export_dual);
+
     // Exp6: sort-net-N8 3-tier meta-engine
     const mmm_holdout_hillclimb_sort = b.addExecutable(.{
         .name = "mmm_holdout_hillclimb_sort",
