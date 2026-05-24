@@ -1,0 +1,6 @@
+idx,op_id,op_name,dst,src1,src2,used_len
+0,0,INIT_CUR,0,0,0,5
+1,4,EVAL_CUR,0,0,0,5
+2,5,ACCEPT_IF_BETTER,0,0,0,5
+3,9,REG_XOR,0,0,0,5
+4,2,MUTATE_BEST_TO_CUR,1,0,3,5
