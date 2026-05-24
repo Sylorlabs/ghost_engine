@@ -1,5 +1,0 @@
-candidate,correctness,size,depth_proxy,min_edit_to_lib,norm_edit,closest_lib,reach_min_edit,reach_norm,reach_depth,reachable,verdict
-floyd_self,1.000000,19,0,0,0.0000,Floyd-8,0,0.0000,1,1,EQUIVALENT (structural)
-batcher_self,1.000000,19,0,0,0.0000,Batcher-8,0,0.0000,1,1,EQUIVALENT (structural)
-random_net,0.027976,22,0,19,0.7917,Floyd-8,18,0.8182,2,0,NON-SORTER (fails correctness)
-loaded_champion,1.000000,20,0,17,0.7083,Floyd-8,16,0.8000,2,0,INVENTION (strict: correct + divergent + unreachable)

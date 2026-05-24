@@ -1,5 +1,0 @@
-gen,train_anchor_mean,holdout_mean,prev_holdout,verdict,accepted,mm_evals,chain_extras_len
-0,23.805771,-1462.138259,0.000000,ADVANCE,0,188,0
-1,40.055562,-1462.138259,-1462.138259,ADVANCE(tie),0,200,1
-2,34.476401,-1462.138259,-1462.138259,ADVANCE(tie),0,196,2
-3,-11.508008,-1462.138259,-1462.138259,ADVANCE(tie),0,192,3

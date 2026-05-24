@@ -1,3 +1,0 @@
-gen,closure_before,closure_after,nearest,nearest_dist,reason_dist,mean_vsa,drift_from_baseline
-1,9871561262808,28463592419,REASON,227,227,257.0000,266
-2,28463592419,19285654497,AETHER,241,257,255.3000,254

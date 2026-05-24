@@ -1,4 +1,0 @@
-cell,holdout_mean,anchor_mean,nearest_seed_norm,mmm_eval_before_accept,mmm_call_count,mm_eval_before_accept,mm_call_count,sample
-23,42.873938,47.162842,1.000000,true,0,true,0,4
-29,46.858301,47.257446,1.000000,true,1,true,0,6
-35,42.873938,47.580078,1.000000,true,2,true,2,2

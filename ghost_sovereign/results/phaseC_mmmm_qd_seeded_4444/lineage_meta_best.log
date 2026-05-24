@@ -1,5 +1,0 @@
-=== LINEAGE AUDIT ===
-kind=meta candidate=results/phaseC_mmmm_qd_seeded_4444/BEST_champion_meta.csv used=12
-has_eval=true has_accept=true has_call=false first_eval=1 first_accept=2 eval_before_accept=true
-against_count=2 exact_copy=false nearest_edit_distance=14 nearest_normalized=1.0000 nearest=results/mm_chain_mono_F00D/BEST_champion_meta.csv
-lineage_verdict=NON_COPY_STRUCTURAL

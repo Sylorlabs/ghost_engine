@@ -1,4 +1,0 @@
-baseline reference engines: inner_steps=400 eval_seeds=10
-  null (eval-only)          mean=-20.8531 min=-31.6563 max=-10.0938 (n=10, len=2)
-  random-restart            mean=34.6750 min=18.0938 max=64.1875 (n=10, len=3)
-  hill-climb (canonical)    mean=175.1844 min=164.8438 max=180.0000 (n=10, len=3)

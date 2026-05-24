@@ -1,5 +1,0 @@
-generation,incumbent_name,candidate_name,decision,reason,train_delta,train_ci_low,train_ci_high,validation_delta,validation_ci_low,validation_ci_high,test_delta,test_ci_low,test_ci_high,novelty,accepted_meta_mutations,meta_iters,budget_scale
-1,vanilla_sa,candidate,rejected,heldout_not_supported,0.000000,-0.375000,0.375000,0.000000,-0.375000,0.375000,-0.250000,-0.500000,0.000000,outside_calibrated_library_floor,31,32,0.020000
-2,vanilla_sa,candidate,rejected,heldout_not_supported,0.000000,-0.375000,0.375000,-0.125000,-0.500000,0.250000,-0.250000,-0.625000,0.000000,outside_calibrated_library_floor,24,32,0.020000
-3,vanilla_sa,candidate,rejected,heldout_not_supported,0.000000,-0.375000,0.375000,-0.125000,-0.500000,0.250000,-0.250000,-0.625000,0.000000,outside_calibrated_library_floor,29,32,0.020000
-4,vanilla_sa,candidate,rejected,heldout_not_supported,0.125000,0.000000,0.375000,0.000000,0.000000,0.000000,0.000000,-0.375000,0.375000,outside_calibrated_library_floor,25,32,0.020000

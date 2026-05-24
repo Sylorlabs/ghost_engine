@@ -1,3 +1,0 @@
-gen,closure_before,closure_after,nearest,nearest_dist,reason_dist,mean_vsa,drift_from_baseline
-1,9871558905577,26443440388,REASON,232,232,258.0000,273
-2,26443440388,21032427915,SIGNAL,234,260,253.5000,257

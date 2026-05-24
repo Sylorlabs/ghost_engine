@@ -1,4 +1,0 @@
-metric,baseline,tier1
-train_q_best,43.101826,37.224253
-holdout_mean,32.546924,-6.524495
-metaprogram_evals,1460,180

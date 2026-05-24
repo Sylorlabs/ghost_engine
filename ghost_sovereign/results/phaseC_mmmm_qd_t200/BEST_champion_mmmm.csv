@@ -1,5 +1,0 @@
-idx,op_id,op_name,dst,src1,src2
-0,0,INIT_MMM_CUR,0,0,0
-1,4,EVAL_MMM_CUR,0,0,0
-2,5,ACCEPT_MMM_IF_BETTER,0,0,0
-3,3,CROSS_MMM_BEST_CUR,3,2,0

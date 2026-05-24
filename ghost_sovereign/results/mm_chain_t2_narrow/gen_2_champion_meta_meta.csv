@@ -1,7 +1,0 @@
-idx,op_id,op_name,dst,src1,src2
-0,10,REG_SHR,3,3,1
-1,9,REG_XOR,0,1,1
-2,6,ACCEPT_META_SA,3,2,1
-3,12,CALL_META,0,0,1
-4,8,RAND_REG,2,1,3
-5,4,EVAL_META_CUR,3,2,3

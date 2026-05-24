@@ -1,3 +1,0 @@
-gen,score,prev_score,depth,prev_depth,size,correctness,base_norm_edit,extras_max_sim,verdict
-0,181.000000,-inf,8,255,22,1.000000,0.708333,0.000000,ADVANCE
-1,179.000000,181.000000,13,8,16,1.000000,0.750000,0.227273,HALT(no_quality_improvement)

@@ -1,8 +1,0 @@
-Ghost Sovereign MUL-free mixer challenge comparison
-pilot_gate_passed=0
-base_seed=0xF00DCAFE12345678 seeds=1 pilot=50x2 full=100000x200 practrand=1 max_tier=1M verify=1 bits=8
-
-phase,mode,seed_index,seed,composite,avalanche,balance,period,chisq,len,hash,evaluated,elapsed_ms,practrand_top,pass_1M,pass_64M,verify,champion_csv,search_log,practrand_log,verify_log
-pilot,mul_free,1,0x870D0E4A9BA0C681,-220.700195,5.433105,31.593750,4096,252.125000,6,0x556A22E7C3DA4063,103,201,not_run,0,0,not_run,results/phaseF_mul_free_challenge_smoke_compare/champion_pilot_mul_free_seed1.csv,results/phaseF_mul_free_challenge_smoke_compare/search_log_pilot_mul_free_seed1.csv,results/phaseF_mul_free_challenge_smoke_compare/practrand_pilot_mul_free_seed1_1M.txt,
-pilot,no_carry,1,0x1924FDB4D01DD1B0,-293.557617,2.875000,31.933594,2,246.875000,4,0xD1A5A960DB559BD,103,133,not_run,0,0,not_run,results/phaseF_mul_free_challenge_smoke_compare/champion_pilot_no_carry_seed1.csv,results/phaseF_mul_free_challenge_smoke_compare/search_log_pilot_no_carry_seed1.csv,results/phaseF_mul_free_challenge_smoke_compare/practrand_pilot_no_carry_seed1_1M.txt,
-pilot,unrestricted,1,0xD93C2A0808E56C21,38.705293,32.852783,32.140625,4096,261.375000,4,0x9B23AAE499D99D2E,103,72,1M,1,0,not_run,results/phaseF_mul_free_challenge_smoke_compare/champion_pilot_unrestricted_seed1.csv,results/phaseF_mul_free_challenge_smoke_compare/search_log_pilot_unrestricted_seed1.csv,results/phaseF_mul_free_challenge_smoke_compare/practrand_pilot_unrestricted_seed1_1M.txt,

@@ -1,6 +1,0 @@
-idx,op_id,op_name,dst,src1,src2
-0,12,CALL_META,2,3,0
-1,4,EVAL_META_CUR,3,1,0
-2,5,ACCEPT_META_IF_BETTER,2,0,0
-3,0,INIT_META_CUR,3,3,3
-4,10,REG_SHR,2,2,1

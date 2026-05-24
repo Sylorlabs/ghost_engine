@@ -1,4 +1,0 @@
-=== LINEAGE AUDIT ===
-kind=mmm candidate=results/phaseC_mmmm_qd_seeded_4444/BEST_champion_mmm.csv used=8
-has_eval=true has_accept=true has_call=false first_eval=1 first_accept=2 eval_before_accept=true
-against_count=0 lineage_verdict=NOT_CHECKED

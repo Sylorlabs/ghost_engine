@@ -1,4 +1,0 @@
-gen,attempt,train_anchor_mean,holdout_mean,best_so_far,verdict,accepted,mmm_evals,chain_extras_mm_len
-0,1,-52681.924561,-1000000.000000,-inf,NO_PROGRESS,0,66,0
-0,2,-525013.112061,-1000000.000000,-inf,NO_PROGRESS,0,66,0
-0,0,-52681.924561,-1000000.000000,-inf,SOFT_HALT(retries_exhausted_but_continuing),0,66,0

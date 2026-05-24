@@ -1,7 +1,0 @@
-idx,op_id,op_name,dst,src1,src2
-0,5,ACCEPT_MM_IF_BETTER,0,2,0
-1,11,TEMP_DECAY,2,3,0
-2,8,RAND_REG,2,3,0
-3,10,REG_SHR,1,1,1
-4,12,CALL_MM,2,0,3
-5,12,CALL_MM,3,1,3

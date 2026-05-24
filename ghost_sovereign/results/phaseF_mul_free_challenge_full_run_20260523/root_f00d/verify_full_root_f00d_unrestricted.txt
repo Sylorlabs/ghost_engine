@@ -1,8 +1,0 @@
-verify_cli  domain=mixer  csv=results/phaseF_mul_free_challenge_full_run_20260523/root_f00d/champion_full_unrestricted_seed1.csv  bits=8  timeout_ms=30000
-loaded 4 instructions
-
-verdict: COUNTER-EXAMPLE (SAT — property fails)
-elapsed: 23 ms
-detail:
-sat
-

@@ -1,7 +1,0 @@
-idx,op_id,op_name,dst,src1,src2,used_len
-0,6,ACCEPT_SA,2,2,2,6
-1,2,MUTATE_BEST_TO_CUR,1,2,0,6
-2,4,EVAL_CUR,2,2,2,6
-3,8,RAND_REG,2,3,1,6
-4,1,MUTATE_CUR,0,0,0,6
-5,4,EVAL_CUR,3,3,3,6

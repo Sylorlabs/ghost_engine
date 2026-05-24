@@ -1,1 +1,0 @@
-exported_mixer=results/phaseB_mmm_mono_1111/gen2_discovered_mixer.csv q_best=46.217070 meta=results/phaseB_mmm_mono_1111/gen_2_champion_meta.csv seed=0xC0FFEE00DEADBEEF steps=120

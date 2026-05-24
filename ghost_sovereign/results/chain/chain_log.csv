@@ -1,4 +1,0 @@
-gen,score,prev_score,advance_over_prev,base_norm_edit,base_bit_agreement,base_reach_bits,extras_bit_agreement,extras_reach_bits,verdict
-0,47.843750,-inf,1,1.000000,0.501663,0.505127,0.000000,0.000000,ADVANCE
-1,47.960938,47.843750,1,1.000000,0.502106,0.505264,0.421875,0.499969,ADVANCE
-2,47.960938,47.960938,0,1.000000,0.503906,0.504257,0.499451,0.503342,HALT(no_quality_improvement)

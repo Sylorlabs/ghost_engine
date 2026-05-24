@@ -1,1 +1,0 @@
-exported_mixer=results/phaseA_stack_F00D/BEST_discovered_mixer.csv q_best=46.912520 meta=results/phaseA_stack_F00D/BEST_champion_meta.csv seed=0xC0FFEE00DEADBEEF steps=150
