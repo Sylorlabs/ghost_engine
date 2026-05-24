@@ -46,8 +46,8 @@ the composite fitness never enforces)?
 | seed | best SAC holdout | iterations to best | improvement events |
 |------|-----------------|-------------------|-------------------|
 | DEAD | **-15.91** | 4 | 3 (iters 0→2→4) |
-| 1111 | **-25.71** | 3 | stuck early |
-| ABCD | **-15.75** | 21 | 4 (0→6→9→21) |
+| 1111 | **-25.71** | 6 | 2 (iters 0→6); plateau thereafter |
+| ABCD | **-15.75** | 21 | 4 (iters 0→6→9→21) |
 
 Seeds DEAD and ABCD both converge to approximately -15.75 to -15.91 (SAC
 deviation ≈ 5% from ideal). Seed 1111 stalls at -25.71 (SAC deviation ≈ 12%).
