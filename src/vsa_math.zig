@@ -1,9 +1,22 @@
 const std = @import("std");
 
-/// 1024-bit HyperVector represented as 16x 64-bit integers.
-/// Optimized for native SIMD registers (AVX, NEON).
-/// V31: Detection-only parity checksum in the last slot (not error-correcting).
-pub const HyperVector = @Vector(16, u64);
+/// 4096-bit HyperVector represented as 64x 64-bit integers.
+/// Phase 2: Latent Expansion — shattering the 1024-bit ceiling.
+/// The expanded coordinate space eliminates holographic interference
+/// during dense synthetic concept compression.
+pub const HyperVector = @Vector(64, u64);
+
+/// Number of data lanes (excluding parity)
+pub const DATA_LANES: usize = 63;
+
+/// Total number of lanes
+pub const TOTAL_LANES: usize = 64;
+
+/// Total bit width of data payload
+pub const DATA_BITS: usize = DATA_LANES * 64; // 4032 bits of data
+
+/// Parity lane index
+pub const PARITY_LANE: usize = 63;
 
 pub const Boundary = enum(u32) { none = 0, word = 1, phrase = 2, paragraph = 3, soul = 4 };
 
@@ -19,13 +32,14 @@ pub fn detectSyntacticBoundary(rune: u32) Boundary {
 }
 
 /// Calculate checksum parity for the HyperVector.
-/// Uses the first 15 slots to generate a 64-bit checksum in slot 15.
+/// Uses the first 63 slots to generate a 64-bit checksum in slot 63.
 /// NOTE: Detection-only. Cannot correct errors — only flags corruption.
 pub fn generateParity(v: HyperVector) u64 {
+    @setEvalBranchQuota(100000);
     var parity: u64 = 0;
-    inline for (0..15) |i| {
+    inline for (0..DATA_LANES) |i| {
         // Non-linear combination to maximize error detection
-        parity ^= std.math.rotl(u64, v[i], @as(u6, @intCast(i * 3)));
+        parity ^= std.math.rotl(u64, v[i], @as(u6, @intCast(i * 3 % 64)));
         parity = parity *% 0xbf58476d1ce4e5b9;
     }
     return parity;
@@ -34,7 +48,7 @@ pub fn generateParity(v: HyperVector) u64 {
 /// Verify HyperVector integrity via checksum comparison.
 /// Returns false if corruption is detected (checksum mismatch).
 pub fn isHealthy(v: HyperVector) bool {
-    return v[15] == generateParity(v);
+    return v[PARITY_LANE] == generateParity(v);
 }
 
 // ── Role-Filler Binding Constants (Orthogonal Identities) ──
@@ -55,93 +69,118 @@ pub const ROUTE_VEC_VSA    = generate(0xAAAA_5555_AAAA_5555); // SUB-SYMBOLIC (V
 pub const ROUTE_VEC_SCALAR = generate(0x1234_4321_1234_4321); // TRIVIAL (Scalar/Social)
 
 /// Hardware-accelerated concept generator.
+/// Fills 63 data lanes via a hash chain, then computes parity in lane 63.
 pub fn generate(seed: u64) HyperVector {
+    @setEvalBranchQuota(100000);
     var v: HyperVector = undefined;
     var s = seed ^ 0x60bee2bee120fc15;
     const c1 = 0xa3b195354a39b70d;
     const c2 = 0x123456789abcdef0;
 
-    // Unrolled for maximum pipeline saturation (first 15 slots)
-    inline for (0..15) |i| {
+    // Unrolled for maximum pipeline saturation (first 63 data slots)
+    inline for (0..DATA_LANES) |i| {
         s = (s ^ (s >> 33)) *% c1;
         s = (s ^ (s >> 33)) *% c2;
         s = s ^ (s >> 33);
         v[i] = s;
     }
-    // Slot 15 is dedicated to the integrity checksum
-    v[15] = generateParity(v);
+    // Slot 63 is dedicated to the integrity checksum
+    v[PARITY_LANE] = generateParity(v);
     return v;
 }
 
 /// Bitwise Binding (XOR) - 100% Symmetrical
 pub inline fn bind(a: HyperVector, b: HyperVector) HyperVector {
+    @setEvalBranchQuota(100000);
     var res = a ^ b;
-    res[15] = generateParity(res);
+    res[PARITY_LANE] = generateParity(res);
     return res;
 }
 
-/// Bitwise Bundling (Majority Rule)
-/// Implementation: (a & b) | (b & c) | (c & a)
 pub inline fn bundle(a: HyperVector, b: HyperVector, c: HyperVector) HyperVector {
+    @setEvalBranchQuota(100000);
     var res = (a & b) | (b & c) | (c & a);
-    res[15] = generateParity(res);
+    res[PARITY_LANE] = generateParity(res);
+    return res;
+}
+
+/// N-Way Bitwise Bundling (Majority Rule across N vectors)
+/// Sums the active bits across every lane and thresholds to a single vector.
+pub fn bundleN(vectors: []const HyperVector) HyperVector {
+    var res: HyperVector = undefined;
+    const threshold = vectors.len / 2;
+    
+    for (0..DATA_LANES) |i| {
+        var lane_res: u64 = 0;
+        var bit: u6 = 0;
+        while (true) {
+            var count: usize = 0;
+            for (vectors) |v| {
+                if (((v[i] >> bit) & 1) == 1) {
+                    count += 1;
+                }
+            }
+            if (count > threshold) {
+                lane_res |= (@as(u64, 1) << bit);
+            }
+            if (bit == 63) break;
+            bit += 1;
+        }
+        res[i] = lane_res;
+    }
+    res[PARITY_LANE] = generateParity(res);
     return res;
 }
 
 /// Circular Permutation (Shift logic)
 pub inline fn permute(v: HyperVector) HyperVector {
+    @setEvalBranchQuota(100000);
     var result: HyperVector = undefined;
     // Architecture optimization: use rotl if available natively
-    inline for (0..15) |i| {
+    inline for (0..DATA_LANES) |i| {
         result[i] = std.math.rotl(u64, v[i], 19);
     }
-    result[15] = generateParity(result);
+    result[PARITY_LANE] = generateParity(result);
     return result;
 }
 
 /// Rotate HyperVector elements by N positions (used for fractal/spell push)
 pub inline fn rotate(v: HyperVector, comptime n: comptime_int) HyperVector {
+    @setEvalBranchQuota(100000);
     var result: HyperVector = undefined;
-    // Note: Rotate only the first 15 slots to preserve parity slot integrity
-    inline for (0..15) |i| {
-        result[i] = v[(i + n) % 15];
+    // Note: Rotate only the first 63 data slots to preserve parity slot integrity
+    inline for (0..DATA_LANES) |i| {
+        result[i] = v[(i + n) % DATA_LANES];
     }
-    result[15] = generateParity(result);
+    result[PARITY_LANE] = generateParity(result);
     return result;
 }
 
-/// Collapse 1024-bit HyperVector to a 64-bit hash via XOR folding
+/// Collapse 4096-bit HyperVector to a 64-bit hash via XOR folding
 pub inline fn collapse(v: HyperVector) u64 {
+    @setEvalBranchQuota(100000);
     var acc: u64 = v[0];
-    inline for (1..16) |i| {
+    inline for (1..TOTAL_LANES) |i| {
         acc ^= v[i];
     }
     return acc;
 }
 
-/// Project the 1024-bit HyperVector to a 32-bit Locality-Sensitive Hash.
+/// Project the 4096-bit HyperVector to a 32-bit Locality-Sensitive Hash.
 ///
 /// Algorithm: Majority-Thresholded Segment Projection
-///   - Partition the 1024-bit vector into 32 segments of 32 bits each.
-///   - For each segment, count the set bits (popcount).
-///   - If more than 16 bits are set (majority = 1), the projection bit is 1.
+///   - For a 4096-bit vector (64 lanes of 64 bits), we sample 32 segments.
+///   - Each segment is 128 bits (2 lanes). Count the set bits.
+///   - If more than 64 bits are set (majority = 1), the projection bit is 1.
 pub fn projectSpatialSignature(v: HyperVector) u32 {
+    @setEvalBranchQuota(100000);
     var result: u32 = 0;
-    inline for (0..16) |word_idx| {
-        const word = v[word_idx];
-
-        // Lower 32 bits → projection bit at index (word_idx * 2)
-        const lo = @as(u32, @truncate(word));
-        const lo_pop = @popCount(lo);
-        if (lo_pop > 16) {
-            result |= @as(u32, 1) << @as(u5, @intCast(word_idx * 2));
-        }
-
-        // Upper 32 bits → projection bit at index (word_idx * 2 + 1)
-        const hi = @as(u32, @truncate(word >> 32));
-        const hi_pop = @popCount(hi);
-        if (hi_pop > 16) {
-            result |= @as(u32, 1) << @as(u5, @intCast(word_idx * 2 + 1));
+    inline for (0..32) |seg| {
+        const lane_a = v[seg * 2];
+        const lane_b = v[seg * 2 + 1];
+        const pop = @popCount(lane_a) + @popCount(lane_b);
+        if (pop > 64) {
+            result |= @as(u32, 1) << @as(u5, @intCast(seg));
         }
     }
     return result;
@@ -228,20 +267,23 @@ pub inline fn resonanceScore(expectation: HyperVector, reality: HyperVector) u16
 
 /// Calculate Resonance (Hamming Proximity)
 /// Optimized via hardware POPCNT instructions.
+/// At 4096 bits, max resonance is 4096, max distance is 4096.
 pub inline fn calculateResonance(expectation: HyperVector, reality: HyperVector) u16 {
+    @setEvalBranchQuota(100000);
     const diff = expectation ^ reality;
     var dist: u32 = 0;
-    inline for (0..16) |i| {
+    inline for (0..TOTAL_LANES) |i| {
         dist += @popCount(diff[i]);
     }
-    return @as(u16, @intCast(1024 -| dist));
+    return @as(u16, @intCast(4096 -| dist));
 }
 
 /// Hamming Distance (Raw Drift)
 pub inline fn hammingDistance(a: HyperVector, b: HyperVector) u16 {
+    @setEvalBranchQuota(100000);
     const diff = a ^ b;
     var dist: u32 = 0;
-    inline for (0..16) |i| {
+    inline for (0..TOTAL_LANES) |i| {
         dist += @popCount(diff[i]);
     }
     return @as(u16, @intCast(dist));
