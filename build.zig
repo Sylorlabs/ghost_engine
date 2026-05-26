@@ -599,6 +599,53 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
 
+    // ── Phase 5: two-stage geometric compiler demo ──
+    // Deliberately DECOUPLED from the ghost_core module graph (mirrors the
+    // verify_cli precedent): it only needs std + libz3, so it builds and runs
+    // even when unrelated parts of the engine are mid-change. Run with:
+    //   zig build verified-swap
+    {
+        const verified_swap = b.addExecutable(.{
+            .name = "verified_swap",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/verified_swap.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        verified_swap.root_module.linkSystemLibrary("c", .{});
+        verified_swap.root_module.linkSystemLibrary("z3", .{});
+        verified_swap.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+        verified_swap.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include/x86_64-linux-gnu" });
+        verified_swap.root_module.addLibraryPath(.{ .cwd_relative = "/usr/lib/x86_64-linux-gnu" });
+        b.installArtifact(verified_swap);
+        const run_verified_swap = b.addRunArtifact(verified_swap);
+        const verified_swap_step = b.step("verified-swap", "Build+run the Phase 5 two-stage geometric compiler demo (validator + real Z3)");
+        verified_swap_step.dependOn(&run_verified_swap.step);
+    }
+
+    // ── Phase 6: autonomous guard placement (counterexample-guided repair) ──
+    // Same decoupled std+libz3 wiring. Run with:  zig build autonomous-guard
+    {
+        const autonomous_guard = b.addExecutable(.{
+            .name = "autonomous_guard",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/autonomous_guard.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        autonomous_guard.root_module.linkSystemLibrary("c", .{});
+        autonomous_guard.root_module.linkSystemLibrary("z3", .{});
+        autonomous_guard.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+        autonomous_guard.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include/x86_64-linux-gnu" });
+        autonomous_guard.root_module.addLibraryPath(.{ .cwd_relative = "/usr/lib/x86_64-linux-gnu" });
+        b.installArtifact(autonomous_guard);
+        const run_autonomous_guard = b.addRunArtifact(autonomous_guard);
+        const autonomous_guard_step = b.step("autonomous-guard", "Build+run the Phase 6 autonomous guard-placement repair loop (Z3 SAT -> inject guard -> UNSAT)");
+        autonomous_guard_step.dependOn(&run_autonomous_guard.step);
+    }
+
     const bench_exe = addGhostExecutable(
         b,
         "ghost_bench_serious_workflows",
