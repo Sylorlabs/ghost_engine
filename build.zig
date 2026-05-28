@@ -735,6 +735,29 @@ pub fn build(b: *std.Build) void {
         phase10_step.dependOn(&run_phase10.step);
     }
 
+    // ── Phase 11 CEGIS: detect (SAT) → patch via phase11_weaver → persist
+    // bin_a_repaired.wasm → re-analyze (must return UNSAT). Same z3
+    // wiring as phase10. Run with:  zig build phase11-cegis
+    {
+        const phase11 = b.addExecutable(.{
+            .name = "phase11_cegis",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/compiler/phase11_main.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        phase11.root_module.linkSystemLibrary("c", .{});
+        phase11.root_module.linkSystemLibrary("z3", .{});
+        phase11.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+        phase11.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include/x86_64-linux-gnu" });
+        phase11.root_module.addLibraryPath(.{ .cwd_relative = "/usr/lib/x86_64-linux-gnu" });
+        b.installArtifact(phase11);
+        const run_phase11 = b.addRunArtifact(phase11);
+        const phase11_step = b.step("phase11-cegis", "Build+run Phase 11 CEGIS loop: bin_a SAT → Weaver patch → bin_a_repaired UNSAT");
+        phase11_step.dependOn(&run_phase11.step);
+    }
+
     // ── Phase 2.0: V2 bootstrap — dynamic codebook + SyGuS axiom discovery + Z3 integration proof ──
     // Same decoupled std+libz3 wiring. Run with:  zig build v2-bootstrap
     {

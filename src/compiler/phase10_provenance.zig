@@ -108,6 +108,11 @@ pub const AnalysisResult = struct {
     /// individually so it knows WHICH store the SAT verdict justifies
     /// repairing — the combined `smt` field's disjunction cannot answer that.
     per_witness_smts: []const []const u8 = &[_][]const u8{},
+    /// Phase 11.0 — the resolved allocator's GLOBAL function index
+    /// (imports first, then user funcs) when state == .analyzes. Lets the
+    /// downstream Wasm rewriter scan the body for the matching `call`
+    /// without re-parsing the module. Null when state == .unanalyzable.
+    allocator_func_idx: ?u32 = null,
 };
 
 // ── Minimal Wasm reader (LEB128) ───────────────────────────────────────────
@@ -1564,6 +1569,7 @@ pub fn analyze(
         .unroll_k = if (analyzer.saw_loop) 3 else 0,
         .witnesses = witnesses_slice,
         .per_witness_smts = per_witness_smts,
+        .allocator_func_idx = allocator_func_idx,
     };
 }
 
