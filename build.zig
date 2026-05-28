@@ -624,6 +624,26 @@ pub fn build(b: *std.Build) void {
         verified_swap_step.dependOn(&run_verified_swap.step);
     }
 
+    {
+        const test_uaf = b.addExecutable(.{
+            .name = "test_uaf",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/test_uaf.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        test_uaf.root_module.linkSystemLibrary("c", .{});
+        test_uaf.root_module.linkSystemLibrary("z3", .{});
+        test_uaf.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+        test_uaf.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include/x86_64-linux-gnu" });
+        test_uaf.root_module.addLibraryPath(.{ .cwd_relative = "/usr/lib/x86_64-linux-gnu" });
+        b.installArtifact(test_uaf);
+        const run_test_uaf = b.addRunArtifact(test_uaf);
+        const test_uaf_step = b.step("test-uaf", "Build+run the Phase 8 UAF crucible demo");
+        test_uaf_step.dependOn(&run_test_uaf.step);
+    }
+
     // ── Phase 6: autonomous guard placement (counterexample-guided repair) ──
     // Same decoupled std+libz3 wiring. Run with:  zig build autonomous-guard
     {
@@ -644,6 +664,114 @@ pub fn build(b: *std.Build) void {
         const run_autonomous_guard = b.addRunArtifact(autonomous_guard);
         const autonomous_guard_step = b.step("autonomous-guard", "Build+run the Phase 6 autonomous guard-placement repair loop (Z3 SAT -> inject guard -> UNSAT)");
         autonomous_guard_step.dependOn(&run_autonomous_guard.step);
+    }
+
+    // ── Phase 8: Leviathan stream — Skim (VSA dedup) + Expand (real libz3) ──
+    // Same decoupled std+libz3 wiring. Run with:  zig build leviathan-stream
+    {
+        const leviathan = b.addExecutable(.{
+            .name = "leviathan_stream",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/compiler/leviathan_stream.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        leviathan.root_module.linkSystemLibrary("c", .{});
+        leviathan.root_module.linkSystemLibrary("z3", .{});
+        leviathan.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+        leviathan.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include/x86_64-linux-gnu" });
+        leviathan.root_module.addLibraryPath(.{ .cwd_relative = "/usr/lib/x86_64-linux-gnu" });
+        b.installArtifact(leviathan);
+        const run_leviathan = b.addRunArtifact(leviathan);
+        const leviathan_step = b.step("leviathan-stream", "Build+run Phase 8 Skim-and-Expand: VSA dedup sieve + on-demand real-Z3 island verification");
+        leviathan_step.dependOn(&run_leviathan.step);
+    }
+
+    // ── Phase 9.1 (FROZEN REGRESSION): Wasm spike → array-theory bounds proof ──
+    // Frozen baseline. New analysis lives in Phase 10. This step exists ONLY
+    // to keep the original single-load pipeline green as a regression check.
+    // Run with:  zig build wasm-spike-phase9-regression
+    {
+        const wasm_spike = b.addExecutable(.{
+            .name = "wasm_cartographer_phase9",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/compiler/wasm_cartographer_phase9.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        wasm_spike.root_module.linkSystemLibrary("c", .{});
+        wasm_spike.root_module.linkSystemLibrary("z3", .{});
+        wasm_spike.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+        wasm_spike.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include/x86_64-linux-gnu" });
+        wasm_spike.root_module.addLibraryPath(.{ .cwd_relative = "/usr/lib/x86_64-linux-gnu" });
+        b.installArtifact(wasm_spike);
+        const run_wasm_spike = b.addRunArtifact(wasm_spike);
+        const wasm_spike_step = b.step("wasm-spike-phase9-regression", "FROZEN BASELINE: Phase 9.1 single-load array-theory bounds proof. New work belongs in zig build phase10-provenance.");
+        wasm_spike_step.dependOn(&run_wasm_spike.step);
+    }
+
+    // ── Phase 10: Provenance Tracker — typed-stack symbolic exec + R5 unroll ──
+    // Three-fixture acceptance test (Spec v3): A vulnerable -> SAT, B safe -> UNSAT,
+    // C xor-aliased -> UNANALYZABLE. Run with:  zig build phase10-provenance
+    {
+        const phase10 = b.addExecutable(.{
+            .name = "phase10_provenance",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/compiler/phase10_main.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        phase10.root_module.linkSystemLibrary("c", .{});
+        phase10.root_module.linkSystemLibrary("z3", .{});
+        phase10.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+        phase10.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include/x86_64-linux-gnu" });
+        phase10.root_module.addLibraryPath(.{ .cwd_relative = "/usr/lib/x86_64-linux-gnu" });
+        b.installArtifact(phase10);
+        const run_phase10 = b.addRunArtifact(phase10);
+        const phase10_step = b.step("phase10-provenance", "Build+run Phase 10 acceptance: A=SAT, B=UNSAT, C=UNANALYZABLE with real Z3 (Spec v3)");
+        phase10_step.dependOn(&run_phase10.step);
+    }
+
+    // ── Phase 2.0: V2 bootstrap — dynamic codebook + SyGuS axiom discovery + Z3 integration proof ──
+    // Same decoupled std+libz3 wiring. Run with:  zig build v2-bootstrap
+    {
+        const v2_bootstrap = b.addExecutable(.{
+            .name = "v2_bootstrap",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/test_v2_bootstrap.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        v2_bootstrap.root_module.linkSystemLibrary("c", .{});
+        v2_bootstrap.root_module.linkSystemLibrary("z3", .{});
+        v2_bootstrap.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+        v2_bootstrap.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include/x86_64-linux-gnu" });
+        v2_bootstrap.root_module.addLibraryPath(.{ .cwd_relative = "/usr/lib/x86_64-linux-gnu" });
+        b.installArtifact(v2_bootstrap);
+        const run_v2_bootstrap = b.addRunArtifact(v2_bootstrap);
+        const v2_bootstrap_step = b.step("v2-bootstrap", "Build+run Phase 2.0: dynamic codebook + SyGuS axiom discovery + Z3 integration proof");
+        v2_bootstrap_step.dependOn(&run_v2_bootstrap.step);
+    }
+
+    // ── Phase 2.1: V2 boundary — characterize depth-2 synthesis limits with unary grammar ──
+    // std-only; no z3, no ghost_core. Run with:  zig build v2-boundary
+    {
+        const v2_boundary = b.addExecutable(.{
+            .name = "v2_boundary",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/test_v2_boundary.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        b.installArtifact(v2_boundary);
+        const run_v2_boundary = b.addRunArtifact(v2_boundary);
+        const v2_boundary_step = b.step("v2-boundary", "Build+run Phase 2.1: depth-2 boundary characterization with unary bvnot/bvneg grammar");
+        v2_boundary_step.dependOn(&run_v2_boundary.step);
     }
 
     const bench_exe = addGhostExecutable(
