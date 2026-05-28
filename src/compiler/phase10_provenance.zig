@@ -39,6 +39,51 @@ pub const Verdict = enum { sat, unsat, unknown, err };
 
 pub const AnalyzerState = enum { analyzes, unanalyzable };
 
+/// Phase 11.0a — per-store witness for the Weaver. Populated only for stores
+/// whose address expression at execution time is `local.get K` or
+/// `local.get K (+ i32.const M, i32.add)*`. Other shapes (shl, mul, call
+/// results, opaques) do NOT emit a witness — analysis still proceeds (the
+/// store contributes its obligation to the combined SMT query), but
+/// `phase11_weaver` refuses to repair witnessless stores. This is the
+/// "no guessing at Wasm-level expressions" rule that mirrors the existing
+/// poison-pill philosophy.
+pub const StoreWitness = struct {
+    /// Index into ParsedModule.funcs (user-function index, NOT the global
+    /// function index that prepends imports). Phase 10 analyzes only func[0];
+    /// the field exists for symmetry with future multi-function support.
+    func_idx: u32,
+    /// Byte offset of the i32.store{,8,16} OPCODE within the function body
+    /// (i.e. relative to FuncBody.body[0], not to the .wasm file start).
+    /// The Weaver splices guard bytes immediately before this offset.
+    body_offset_of_store: usize,
+    /// Local index whose value carries the address (or its alloc-base).
+    addr_local: u32,
+    /// Literal byte offset added to `addr_local`'s value via i32.const+i32.add
+    /// chains. Zero when the address is exactly `local.get K`.
+    addr_const_offset: u32,
+    /// Access width in bytes: 4/2/1 for i32.store / i32.store16 / i32.store8.
+    /// The Weaver folds this into the guard so partial-overflow stores
+    /// (`addr_const_offset + width > alloc_size`) still trap.
+    width: u32,
+    /// Allocation size in bytes recorded at the source allocator call. The
+    /// guard compares (addr_local + addr_const_offset + width) against this.
+    alloc_size: u32,
+};
+
+/// Block-termination signal — Phase 11.0b ("Defect 4" fix). `execBlock`
+/// returns this so the `if`/`end` handler can decide whether the fall-through
+/// guard should be tightened by `¬cond`. Without this signal the analyzer
+/// would not learn that a post-guard `i32.store` is conditioned on the guard
+/// being false, and a correctly repaired binary would re-analyze as SAT.
+pub const BlockTermination = enum {
+    /// Block reached its closing `end` (or fell off the end of the slice).
+    fallthrough,
+    /// Block hit `unreachable`. No path beyond this point in this block.
+    trapped,
+    /// Block hit `br N`, `br_table`, or `ret`. Control left the block.
+    branched_out,
+};
+
 pub const AnalysisResult = struct {
     state: AnalyzerState,
     /// When state == analyzes: the SMT obligation for the store that overflows
@@ -52,6 +97,17 @@ pub const AnalysisResult = struct {
     store_sites: usize = 0,
     /// Loop unroll bound actually applied (3 if a loop was present, 0 otherwise).
     unroll_k: usize = 0,
+    /// Phase 11.0a — per-store witnesses for the Weaver. Length equals the
+    /// number of stores whose address shape was Weaver-extractable, which may
+    /// be LESS than `store_sites` if some stores have unanalyzable address
+    /// expressions (shl, call-result-rooted, etc.).
+    witnesses: []const StoreWitness = &[_]StoreWitness{},
+    /// Phase 11.0a — per-witness self-contained Z3-ready SMT queries
+    /// (declarations + single `(assert ...)` + `(check-sat)`). Same length and
+    /// indexing as `witnesses`. The end-to-end Weaver harness runs Z3 on each
+    /// individually so it knows WHICH store the SAT verdict justifies
+    /// repairing — the combined `smt` field's disjunction cannot answer that.
+    per_witness_smts: []const []const u8 = &[_][]const u8{},
 };
 
 // ── Minimal Wasm reader (LEB128) ───────────────────────────────────────────
@@ -211,9 +267,41 @@ const Provenance = union(enum) {
     tainted,
 };
 
+/// Wasm-level origin of a stack Value — Phase 11.0a.
+///
+/// This is ORTHOGONAL to `Provenance` (which tracks symbolic alloc-base
+/// lineage for the SMT solver). `Origin` tracks the SYNTACTIC SHAPE of the
+/// Wasm bytecode that produced the value, restricted to the narrow grammar
+///
+///     E ::= local.get K   |   E + i32.const M
+///
+/// that the Phase 11 Weaver can replay verbatim ahead of a store. Anything
+/// outside this grammar (shifts, multiplies, call results, loads, opaques,
+/// arithmetic with two non-const operands) collapses to `.unknown` — the
+/// Weaver then refuses to synthesize a guard for that store. This is the
+/// "do not guess at Wasm-level address expressions" rule the user selected.
+const Origin = union(enum) {
+    /// Origin not in the supported grammar. The Weaver will not repair stores
+    /// whose address Value carries this origin.
+    unknown,
+    /// Pushed by `local.get K` (or `local.tee K`).
+    local_get: u32,
+    /// Pushed by `i32.const C`. Tracked because the i32.add propagator needs
+    /// to recognize `local + const` and `const + local` shapes.
+    const_: u32,
+    /// Pushed by a `local.get K [i32.const M i32.add]+` chain. `off` is the
+    /// accumulated constant — repeated `+ i32.const M2` folds into M + M2 at
+    /// origin-propagation time, never at the SMT level.
+    local_plus_const: struct { local: u32, off: u32 },
+};
+
 const Value = struct {
     smt: []const u8, // SMT bv32 expression for this value
     prov: Provenance,
+    /// Phase 11.0a — Wasm-level origin for Weaver replay. `.unknown` is the
+    /// safe default; only `local.get`, `local.tee`, `i32.const`, and a
+    /// `local + const` shape of `i32.add` propagate anything else.
+    wasm_origin: Origin = .unknown,
 };
 
 // ── Parsed module: just what we need for analysis ──────────────────────────
@@ -501,6 +589,26 @@ const Analyzer = struct {
     // opaque on first read; metadata for type/mut comes from `globals_meta`.
     globals: []?Value,
     globals_meta: []const Global,
+    // Phase 11.0a ── Weaver support.
+    /// The OUTER function body. `execBlock` is called recursively with sub-
+    /// slices for nested blocks; pointer arithmetic against this base gives
+    /// the absolute body-offset of each i32.store opcode, which the Weaver
+    /// needs to know exactly where to splice guard bytes.
+    body_base: []const u8 = &[_]u8{},
+    /// User-function index being analyzed. Phase 10 only analyzes funcs[0],
+    /// so this is always 0; carried as a field so the witness records what
+    /// it was rather than implicitly assuming.
+    user_func_idx: u32 = 0,
+    /// Per-store witnesses for the Weaver. Only stores with a Weaver-shaped
+    /// address Value get an entry here; witnessless stores still contribute
+    /// an obligation to `obligations`.
+    witnesses: std.ArrayList(StoreWitness),
+    /// Per-witness self-contained SMT obligation TEXT (without declarations,
+    /// without the (assert) wrapper, without check-sat). `analyze()` wraps
+    /// each into a full query at result-build time. Same indexing as
+    /// `witnesses` — parallel arrays so we can route Z3 SAT verdicts back
+    /// to the specific store that justified them.
+    per_witness_obligations: std.ArrayList([]const u8),
 
     fn pop(self: *Analyzer, stack: *Stack) !Value {
         _ = self;
@@ -521,6 +629,43 @@ const Analyzer = struct {
         return name;
     }
 };
+
+// ── Phase 11.0a — Wasm origin propagation for i32.add ──────────────────────
+/// Returns the origin of `a + b` when both are i32 values. Recognized shapes:
+///   local + const                  → local_plus_const{local, off=const}
+///   const + local                  → local_plus_const{local, off=const}
+///   local_plus_const + const       → local_plus_const{local, off += const}
+///   const + local_plus_const       → local_plus_const{local, off += const}
+/// Every other combination is `.unknown`. Wrapping on `off` is treated as
+/// catastrophic (we collapse to `.unknown` rather than mask) — a 32-bit
+/// overflow on the constant accumulator means the source program is doing
+/// something the Weaver should not be trusted to model.
+fn addOrigin(a: Origin, b: Origin) Origin {
+    switch (a) {
+        .local_get => |la| switch (b) {
+            .const_ => |cb| return .{ .local_plus_const = .{ .local = la, .off = cb } },
+            else => return .unknown,
+        },
+        .const_ => |ca| switch (b) {
+            .local_get => |lb| return .{ .local_plus_const = .{ .local = lb, .off = ca } },
+            .local_plus_const => |bp| {
+                const sum = @addWithOverflow(bp.off, ca);
+                if (sum[1] != 0) return .unknown;
+                return .{ .local_plus_const = .{ .local = bp.local, .off = sum[0] } };
+            },
+            else => return .unknown,
+        },
+        .local_plus_const => |ap| switch (b) {
+            .const_ => |cb| {
+                const sum = @addWithOverflow(ap.off, cb);
+                if (sum[1] != 0) return .unknown;
+                return .{ .local_plus_const = .{ .local = ap.local, .off = sum[0] } };
+            },
+            else => return .unknown,
+        },
+        .unknown => return .unknown,
+    }
+}
 
 // ── Per-opcode propagation (Spec v3 R3) ────────────────────────────────────
 fn provBinary(op: u8, a: Provenance, b: Provenance) Provenance {
@@ -544,9 +689,12 @@ fn provBinary(op: u8, a: Provenance, b: Provenance) Provenance {
 }
 
 // ── Symbolic exec of a flat instruction block (no loop back-edges). ────────
-/// Returns the SMT bool expression for "did the block fall through" path
-/// guard (accumulated negations of br_if conditions), and updates `locals`
-/// + `obligations`. A `br` / `br_if 1+` ends the block early.
+/// Symbolically executes a block body. Returns a `BlockTermination` that the
+/// caller uses to decide whether downstream code in the enclosing block is
+/// reachable from this branch — Phase 11.0b ("Defect 4" fix) needs this so
+/// that `if (cond) unreachable end` patches actually tighten the fall-through
+/// path guard by `¬cond`, otherwise the verification loop returns SAT on
+/// correctly-repaired binaries.
 fn execBlock(
     self: *Analyzer,
     body: []const u8,
@@ -554,14 +702,27 @@ fn execBlock(
     allocator_func_idx: ?u32,
     enclosing_guard: ?[]const u8,
     in_loop: bool,
-) !void {
+) anyerror!BlockTermination {
     var r = Reader{ .bytes = body };
     var stack = Stack.init(self.allocator);
     defer stack.deinit();
     var guard: ?[]const u8 = enclosing_guard;
+    // Phase 11.0a — base offset of `body` within the outer function body.
+    // Used to record `body_offset_of_store` for the Weaver. Pointer
+    // arithmetic is valid here because every recursive `execBlock` call is
+    // handed a *sub-slice* of the outer function body (`sliceBlock` /
+    // `sliceIf` return sub-slices into the same backing array).
+    const body_base_off: usize = if (self.body_base.len == 0)
+        0
+    else
+        @intFromPtr(body.ptr) - @intFromPtr(self.body_base.ptr);
 
     while (!r.eof()) {
-        if (self.unanalyzable != null) return;
+        if (self.unanalyzable != null) return .trapped;
+        // Capture opcode position BEFORE advancing the reader, so the
+        // i32.store handler can record an absolute body offset even after
+        // consuming the align/offset immediates.
+        const op_start_in_body: usize = r.pos;
         const op = try r.byte();
         // Phase 10.3 ── Poison Pills. Float and i64 opcodes are intercepted
         // BEFORE the main switch so they fire even if the opcode would also
@@ -569,49 +730,73 @@ fn execBlock(
         // distinguishable for the harness's substring assertions.
         if (isFloatOpcode(op)) {
             self.unanalyzable = "FloatTheoryUnsupported: f32/f64 opcode encountered";
-            return;
+            return .trapped;
         }
         if (isI64Opcode(op)) {
             self.unanalyzable = "I64TheoryUnsupported: i64 opcode encountered (analyzer is i32-only)";
-            return;
+            return .trapped;
         }
         switch (op) {
             Op.nop => {},
             Op.unreachable_ => {
                 // Wasm `unreachable` traps. From an analyzer's POV: any path
-                // that hits it is dead. Terminate the block. No obligation
-                // emitted; subsequent code is unreachable on this path.
-                return;
+                // that hits it is dead. Terminate the block with `.trapped`
+                // so the `if`/`end` handler upstream can conclude that the
+                // then-arm does not fall through (Phase 11.0b).
+                return .trapped;
             },
             Op.i32_const => {
                 const v = try r.sleb();
-                const s = try std.fmt.allocPrint(self.allocator, "(_ bv{d} 32)", .{@as(u32, @truncate(@as(u64, @bitCast(v))))});
-                try stack.append(.{ .smt = s, .prov = .none });
+                const truncated = @as(u32, @truncate(@as(u64, @bitCast(v))));
+                const s = try std.fmt.allocPrint(self.allocator, "(_ bv{d} 32)", .{truncated});
+                // Phase 11.0a — tag the origin so a later `i32.add` against
+                // a `.local_get` operand can fold this constant into the
+                // address expression's accumulated offset.
+                try stack.append(.{ .smt = s, .prov = .none, .wasm_origin = .{ .const_ = truncated } });
             },
             Op.local_get => {
                 const idx = try r.uleb();
                 if (idx >= locals.len) return error.LocalOOB;
-                const v = locals[idx] orelse {
+                // Phase 11.0a — origin is ALWAYS `.local_get(idx)` for the
+                // value pushed here, REGARDLESS of how `locals[idx]` was
+                // computed earlier. The Weaver replays `local.get idx` to
+                // recover the address — what produced it the first time is
+                // irrelevant for the bounds check.
+                const v_in = locals[idx] orelse blk: {
                     // Read of uninit local — treat as opaque param.
                     const sym = try self.freshOpaque("l");
                     const v2 = Value{ .smt = sym, .prov = .none };
                     locals[idx] = v2;
-                    try stack.append(v2);
-                    continue;
+                    break :blk v2;
                 };
-                try stack.append(v);
+                try stack.append(.{
+                    .smt = v_in.smt,
+                    .prov = v_in.prov,
+                    .wasm_origin = .{ .local_get = @intCast(idx) },
+                });
             },
             Op.local_set => {
                 const idx = try r.uleb();
                 if (idx >= locals.len) return error.LocalOOB;
-                locals[idx] = try self.pop(&stack);
+                // Strip origin on store: the local CELL has no origin; only
+                // values freshly produced by a Wasm op do. On later
+                // `local.get` we re-attach `.local_get` regardless.
+                const v = try self.pop(&stack);
+                locals[idx] = .{ .smt = v.smt, .prov = v.prov, .wasm_origin = .unknown };
             },
             Op.local_tee => {
                 const idx = try r.uleb();
                 if (idx >= locals.len) return error.LocalOOB;
                 const v = try self.pop(&stack);
-                locals[idx] = v;
-                try stack.append(v);
+                // Local cell stripped of origin (same reasoning as local.set);
+                // stack value re-tagged with `.local_get(idx)` so downstream
+                // arithmetic against this stack item is Weaver-replayable.
+                locals[idx] = .{ .smt = v.smt, .prov = v.prov, .wasm_origin = .unknown };
+                try stack.append(.{
+                    .smt = v.smt,
+                    .prov = v.prov,
+                    .wasm_origin = .{ .local_get = @intCast(idx) },
+                });
             },
             Op.drop => _ = try self.pop(&stack),
             Op.select => {
@@ -639,14 +824,14 @@ fn execBlock(
                 const idx = try r.uleb();
                 if (idx >= self.globals.len) {
                     self.unanalyzable = "global.get index out of range";
-                    return;
+                    return .trapped;
                 }
                 const meta = self.globals_meta[idx];
                 if (meta.valtype != 0x7f) {
                     // Non-i32 global — caught here rather than at parse time so
                     // i32 modules with unused i64/float globals still analyze.
                     self.unanalyzable = "global.get on non-i32 global (analyzer is i32-only)";
-                    return;
+                    return .trapped;
                 }
                 if (self.globals[idx] == null) {
                     const sym = try self.freshOpaque("global");
@@ -658,14 +843,20 @@ fn execBlock(
                 const idx = try r.uleb();
                 if (idx >= self.globals.len) {
                     self.unanalyzable = "global.set index out of range";
-                    return;
+                    return .trapped;
                 }
                 const meta = self.globals_meta[idx];
                 if (meta.valtype != 0x7f) {
                     self.unanalyzable = "global.set on non-i32 global (analyzer is i32-only)";
-                    return;
+                    return .trapped;
                 }
-                self.globals[idx] = try self.pop(&stack);
+                // Phase 11.0a — strip origin: globals are not Weaver-replayable
+                // (no Wasm-level identifier that corresponds to "current value
+                // of global K" in the same way `local.get K` corresponds to a
+                // local's current value, in a fashion that's stable across the
+                // guard insertion point). Treat as `.unknown`.
+                const v = try self.pop(&stack);
+                self.globals[idx] = .{ .smt = v.smt, .prov = v.prov, .wasm_origin = .unknown };
             },
             Op.memory_size => {
                 _ = try r.byte(); // memidx reserved-0
@@ -728,7 +919,7 @@ fn execBlock(
                 _ = try r.uleb();
                 _ = try r.uleb();
                 self.unanalyzable = "call_indirect (target unresolvable symbolically)";
-                return;
+                return .trapped;
             },
             Op.i32_add, Op.i32_sub, Op.i32_mul, Op.i32_and, Op.i32_or, Op.i32_xor, Op.i32_shl, Op.i32_shr_s, Op.i32_shr_u => {
                 const b = try self.pop(&stack);
@@ -746,7 +937,22 @@ fn execBlock(
                     else => unreachable,
                 };
                 const s = try std.fmt.allocPrint(self.allocator, "({s} {s} {s})", .{ smt_op, a.smt, b.smt });
-                try stack.append(.{ .smt = s, .prov = provBinary(op, a.prov, b.prov) });
+                // Phase 11.0a — origin propagation. ONLY i32.add propagates
+                // a Weaver-replayable origin, and only when one operand is a
+                // local-rooted origin and the other is a constant. All other
+                // arithmetic (sub/mul/shl/and/or/xor/shr) clobbers to
+                // `.unknown` — the Weaver refuses to emit a guard for a
+                // store whose address depends on multiplication or shifts,
+                // matching the user-chosen "no guessing" policy.
+                var out_origin: Origin = .unknown;
+                if (op == Op.i32_add) {
+                    out_origin = addOrigin(a.wasm_origin, b.wasm_origin);
+                }
+                try stack.append(.{
+                    .smt = s,
+                    .prov = provBinary(op, a.prov, b.prov),
+                    .wasm_origin = out_origin,
+                });
             },
             Op.i32_eq, Op.i32_ne, Op.i32_lt_s, Op.i32_lt_u, Op.i32_gt_s, Op.i32_gt_u, Op.i32_le_s, Op.i32_le_u, Op.i32_ge_s, Op.i32_ge_u => {
                 const b = try self.pop(&stack);
@@ -773,7 +979,7 @@ fn execBlock(
                 // Phase 10.2 — type-table-driven dispatch (Blocker #2 fix).
                 if (idx >= self.signatures.len) {
                     self.unanalyzable = "call index out of range of signature table";
-                    return;
+                    return .trapped;
                 }
                 const sig = self.signatures[idx];
 
@@ -791,16 +997,16 @@ fn execBlock(
                     if (idx == afi) {
                         if (self.allocator_size_arg_index >= sig.nparams) {
                             self.unanalyzable = "AllocatorConfig.size_arg_index out of range for this allocator's signature";
-                            return;
+                            return .trapped;
                         }
                         const size_arg = args[self.allocator_size_arg_index];
                         const size = parseLiteralBv32(size_arg.smt) orelse {
                             self.unanalyzable = "allocator size argument is not an i32.const literal";
-                            return;
+                            return .trapped;
                         };
                         if (self.alloc_count >= 1) {
                             self.unanalyzable = "multiple allocator calls in one function (R6)";
-                            return;
+                            return .trapped;
                         }
                         const id = self.alloc_count;
                         self.alloc_count += 1;
@@ -848,11 +1054,11 @@ fn execBlock(
                 switch (addr.prov) {
                     .none => {
                         self.unanalyzable = "store with untraceable provenance";
-                        return;
+                        return .trapped;
                     },
                     .tainted => {
                         self.unanalyzable = "store with tainted-provenance address";
-                        return;
+                        return .trapped;
                     },
                     .alloc => |al| {
                         // Effective byte address = addr.smt + memarg.offset.
@@ -881,14 +1087,67 @@ fn execBlock(
                             viol;
                         try self.obligations.append(oblig);
                         self.store_sites += 1;
+
+                        // Phase 11.0a — emit per-store witness if the address
+                        // Value's wasm_origin is in the supported grammar.
+                        // The memarg `off` (the static immediate of i32.store)
+                        // is folded into `addr_const_offset` here: the Weaver
+                        // emits the guard BEFORE the store, where it must
+                        // mirror the full effective address that the original
+                        // i32.store would compute (`addr_local + addr_const + memarg_off`).
+                        const witness_offset_opt: ?u32 = switch (addr.wasm_origin) {
+                            .local_get => |k| blk: {
+                                const sum = @addWithOverflow(@as(u32, 0), @as(u32, @intCast(off)));
+                                if (sum[1] != 0) break :blk null;
+                                _ = k;
+                                break :blk sum[0];
+                            },
+                            .local_plus_const => |p| blk: {
+                                const sum = @addWithOverflow(p.off, @as(u32, @intCast(off)));
+                                if (sum[1] != 0) break :blk null;
+                                break :blk sum[0];
+                            },
+                            else => null,
+                        };
+                        const witness_local_opt: ?u32 = switch (addr.wasm_origin) {
+                            .local_get => |k| k,
+                            .local_plus_const => |p| p.local,
+                            else => null,
+                        };
+                        if (witness_offset_opt) |const_off| {
+                            if (witness_local_opt) |lk| {
+                                try self.witnesses.append(.{
+                                    .func_idx = self.user_func_idx,
+                                    .body_offset_of_store = body_base_off + op_start_in_body,
+                                    .addr_local = lk,
+                                    .addr_const_offset = const_off,
+                                    .width = width,
+                                    .alloc_size = al.size,
+                                });
+                                // Per-witness obligation = THIS store's
+                                // violation predicate alone (no path-guard
+                                // disjunction with other stores). Used to
+                                // drive Z3 SAT/UNSAT per repair target.
+                                try self.per_witness_obligations.append(oblig);
+                            }
+                        }
+                        // If the address shape was unsupported (shifts,
+                        // calls, opaques), we still ANALYZE — the obligation
+                        // is in the combined disjunction so SAT detection is
+                        // unaffected — but the Weaver will refuse to repair
+                        // a SAT verdict that lacks a corresponding witness.
                     },
                 }
             },
             Op.block => {
                 _ = try r.byte(); // blocktype (assume void 0x40 for fixtures)
                 // Recurse into the block. The block ends at matching 0x0b.
+                // Termination is intentionally DISCARDED: a `block`'s closing
+                // `end` is the target label for any internal `br 0`, so
+                // fall-through past the block is always abstractly reached
+                // (even when inner code unconditionally `br 0`s to the end).
                 const sub_body = try sliceBlock(body, r.pos);
-                try execBlock(self, sub_body, locals, allocator_func_idx, guard, in_loop);
+                _ = try execBlock(self, sub_body, locals, allocator_func_idx, guard, in_loop);
                 r.pos += sub_body.len + 1; // +1 for the 0x0b end byte
             },
             Op.loop_ => {
@@ -907,7 +1166,7 @@ fn execBlock(
                 const bt = try r.byte();
                 if (bt != 0x40) {
                     self.unanalyzable = "ValueProducingBranchUnsupported: if/else with non-void blocktype";
-                    return;
+                    return .trapped;
                 }
                 const cond = try self.pop(&stack);
                 const slices = try sliceIf(body, r.pos);
@@ -921,9 +1180,14 @@ fn execBlock(
                     try std.fmt.allocPrint(self.allocator, "(and {s} {s})", .{ g, then_g })
                 else
                     then_g;
-                try execBlock(self, slices.then_body, locals, allocator_func_idx, new_then_guard, in_loop);
+                const then_term = try execBlock(self, slices.then_body, locals, allocator_func_idx, new_then_guard, in_loop);
+                // Phase 11.0b — fall-through narrowing depends on whether
+                // the else-arm reaches the post-if point. With NO else-body
+                // the implicit else is the fall-through itself (always
+                // reaches), so `else_term` defaults to .fallthrough.
+                var else_term: BlockTermination = .fallthrough;
                 if (slices.else_body) |eb| {
-                    if (self.unanalyzable != null) return;
+                    if (self.unanalyzable != null) return .trapped;
                     const else_g = try std.fmt.allocPrint(
                         self.allocator,
                         "(= {s} (_ bv0 32))",
@@ -933,16 +1197,54 @@ fn execBlock(
                         try std.fmt.allocPrint(self.allocator, "(and {s} {s})", .{ g, else_g })
                     else
                         else_g;
-                    try execBlock(self, eb, locals, allocator_func_idx, new_else_guard, in_loop);
+                    else_term = try execBlock(self, eb, locals, allocator_func_idx, new_else_guard, in_loop);
                 }
                 // r.pos points at the start of the then-body. Advance past
                 // the matching `end` (+1 byte for the 0x0b terminator).
                 r.pos = slices.end_offset + 1;
+
+                // Phase 11.0b ── Defect 4 fix. Narrow the fall-through guard
+                // based on which arms can reach the post-`end` instruction:
+                //
+                //   then=fall, else=fall   → guard unchanged (both reach)
+                //   then=trap, else=fall   → guard ∧= (cond == 0)
+                //   then=fall, else=trap   → guard ∧= (cond != 0)
+                //   then=trap, else=trap   → post-if is unreachable; propagate .trapped
+                //
+                // Without this, an `if (idx >= size) unreachable end`
+                // patched in by phase11_weaver doesn't narrow the path
+                // guard of the subsequent i32.store, and re-analysis of the
+                // repaired binary returns SAT against a verifiably-safe
+                // program. With it, the repair loop closes soundly.
+                const then_reaches = then_term == .fallthrough;
+                const else_reaches = else_term == .fallthrough;
+                if (!then_reaches and !else_reaches) {
+                    // Both arms terminate (trap or branch out). The
+                    // enclosing block's post-`end` code is dead.
+                    return .trapped;
+                }
+                if (then_reaches and !else_reaches) {
+                    // Only the then-arm reaches here, which means cond was
+                    // nonzero. Conjoin (cond != 0) into the fall-through.
+                    guard = if (guard) |g|
+                        try std.fmt.allocPrint(self.allocator, "(and {s} {s})", .{ g, then_g })
+                    else
+                        then_g;
+                } else if (!then_reaches and else_reaches) {
+                    // Only the else-path (which includes the implicit
+                    // no-else fall-through) reaches here → cond == 0.
+                    const eq0 = try std.fmt.allocPrint(self.allocator, "(= {s} (_ bv0 32))", .{cond.smt});
+                    guard = if (guard) |g|
+                        try std.fmt.allocPrint(self.allocator, "(and {s} {s})", .{ g, eq0 })
+                    else
+                        eq0;
+                }
+                // else: both reach → no narrowing possible.
             },
             Op.br => {
                 _ = try r.uleb();
-                // Unconditional branch out of any nesting — terminate this block.
-                return;
+                // Unconditional branch out of any nesting.
+                return .branched_out;
             },
             Op.br_table => {
                 // br_table: <n> <labels...> <default>. We consume all n+1 ULEBs
@@ -956,7 +1258,7 @@ fn execBlock(
                 while (k < n) : (k += 1) _ = try r.uleb();
                 _ = try r.uleb(); // default label
                 _ = try self.pop(&stack); // index
-                return;
+                return .branched_out;
             },
             Op.br_if => {
                 const label = try r.uleb();
@@ -974,17 +1276,26 @@ fn execBlock(
                 else
                     neg;
             },
-            Op.end => return,
-            Op.ret => return,
+            Op.end => return .fallthrough,
+            Op.ret => return .branched_out,
             else => {
                 self.unanalyzable = "unsupported opcode";
-                return;
+                return .trapped;
             },
         }
     }
+    return .fallthrough;
 }
 
 /// R5 — unroll a loop body at most `k=3` times, threading symbolic state.
+///
+/// Per-iteration `BlockTermination` is intentionally discarded: a `loop`
+/// header in Wasm names the loop-START label (not the post-loop label), so
+/// `br 0` from inside iterates rather than escaping. Whether iteration N
+/// fell through, trapped, or branched-out, the enclosing block's
+/// post-`loop`/`end` code is independently reached via the loop's normal
+/// exit semantics — that's modeled by the outer `Op.block`/function-body
+/// fall-through, not by anything `runLoop` returns.
 fn runLoop(
     self: *Analyzer,
     body: []const u8,
@@ -996,7 +1307,7 @@ fn runLoop(
     var iter: usize = 0;
     while (iter < K) : (iter += 1) {
         if (self.unanalyzable != null) return;
-        try execBlock(self, body, locals, allocator_func_idx, enclosing_guard, true);
+        _ = try execBlock(self, body, locals, allocator_func_idx, enclosing_guard, true);
     }
 }
 
@@ -1188,9 +1499,14 @@ pub fn analyze(
         .allocator_size_arg_index = cfg.size_arg_index,
         .globals = global_slots,
         .globals_meta = m.globals,
+        // Phase 11.0a — Weaver support.
+        .body_base = f.body,
+        .user_func_idx = 0,
+        .witnesses = std.ArrayList(StoreWitness).init(allocator),
+        .per_witness_obligations = std.ArrayList([]const u8).init(allocator),
     };
 
-    try execBlock(&analyzer, f.body, locals, allocator_func_idx, null, false);
+    _ = try execBlock(&analyzer, f.body, locals, allocator_func_idx, null, false);
 
     if (analyzer.unanalyzable) |reason| {
         return AnalysisResult{
@@ -1225,11 +1541,29 @@ pub fn analyze(
     }
     try w.writeAll("(check-sat)\n");
 
+    // Phase 11.0a — build a self-contained SMT query per witness. Each query
+    // re-emits all declarations (alloc bases + opaques) so it can be sent to
+    // Z3 standalone; the harness uses these to ROUTE a per-store verdict back
+    // to the specific repair site, which the combined-disjunction query cannot.
+    const witnesses_slice = try analyzer.witnesses.toOwnedSlice();
+    var per_witness_smts = try allocator.alloc([]const u8, analyzer.per_witness_obligations.items.len);
+    for (analyzer.per_witness_obligations.items, 0..) |oblig, i| {
+        var qbuf = std.ArrayList(u8).init(allocator);
+        const qw = qbuf.writer();
+        for (analyzer.declarations.items) |d| {
+            try qw.print("{s}\n", .{d});
+        }
+        try qw.print("(assert {s})\n(check-sat)\n", .{oblig});
+        per_witness_smts[i] = try qbuf.toOwnedSlice();
+    }
+
     return AnalysisResult{
         .state = .analyzes,
         .smt = try buf.toOwnedSlice(),
         .store_sites = analyzer.store_sites,
         .unroll_k = if (analyzer.saw_loop) 3 else 0,
+        .witnesses = witnesses_slice,
+        .per_witness_smts = per_witness_smts,
     };
 }
 

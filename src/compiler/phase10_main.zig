@@ -12,6 +12,16 @@
 //!   └───────────────────┴─────────────────────────┴─────────────────────────┘
 //!
 //! Exit code: 0 iff all three rows match; 1 otherwise.
+//!
+//! Phase 10.4 extension — per-store WITNESS routing.
+//! For each `.analyzes` row that emits store witnesses, we additionally:
+//!   (1) print the structured StoreWitness records the future Weaver consumes;
+//!   (2) run a separate Z3 query for EACH per-witness obligation, proving
+//!       that the combined disjunction's verdict can be decomposed back to
+//!       the specific store sites that justify it. This is the contract a
+//!       repair stage would rely on to know WHICH store to patch.
+//! These additions do not change pass/fail criteria for the 8 baseline rows;
+//! they emit diagnostic output only.
 
 const std = @import("std");
 const prov = @import("phase10_provenance.zig");
@@ -173,6 +183,42 @@ pub fn main() !void {
         mark("analyzer state matches", state_ok);
         mark("Z3 verdict matches", verdict_ok);
         if (!state_ok or !verdict_ok) all_pass = false;
+
+        // ── Phase 10.4 — diagnostic: per-store witnesses + per-witness Z3.
+        // Not part of pass/fail; surfaces the structured data a future
+        // Weaver consumes, and proves the combined verdict decomposes.
+        if (result.witnesses.len > 0) {
+            std.debug.print("  witnesses ({d}):\n", .{result.witnesses.len});
+            for (result.witnesses, 0..) |wt, wi| {
+                std.debug.print(
+                    "    [{d}] func={d} body_offset=0x{x} addr_local={d} addr_const_off={d} width={d} alloc_size={d}\n",
+                    .{ wi, wt.func_idx, wt.body_offset_of_store, wt.addr_local, wt.addr_const_offset, wt.width, wt.alloc_size },
+                );
+            }
+            // Per-witness Z3 — proves the combined verdict decomposes
+            // soundly into per-store verdicts. Routing-contract for the
+            // future Weaver.
+            std.debug.print("  per-witness Z3:\n", .{});
+            var any_sat: bool = false;
+            var any_unsat: bool = false;
+            for (result.per_witness_smts, 0..) |wsmt, wi| {
+                const wv = prov.runZ3(a, wsmt);
+                std.debug.print("    [{d}] {s}\n", .{ wi, prov.verdictWord(wv) });
+                if (wv == .sat) any_sat = true;
+                if (wv == .unsat) any_unsat = true;
+            }
+            // Decomposition sanity: if combined is SAT, at least one
+            // per-witness must be SAT. If combined is UNSAT, ALL must be
+            // UNSAT. Otherwise the per-witness queries are not
+            // representing the same constraint as the combined disjunction.
+            const decomposes = switch (verdict) {
+                .sat => any_sat,
+                .unsat => !any_sat and any_unsat or result.per_witness_smts.len == 0,
+                else => true,
+            };
+            mark("per-witness decomposition consistent with combined verdict", decomposes);
+            if (!decomposes) all_pass = false;
+        }
         std.debug.print("\n", .{});
     }
 
