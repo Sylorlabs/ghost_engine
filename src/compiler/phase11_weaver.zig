@@ -129,6 +129,8 @@ const Op = struct {
     // Comparators — i32.gt_u is what the corrected guard uses.
     const i32_gt_u: u8 = 0x4b;
     const i32_ge_u: u8 = 0x4f;
+    const i32_lt_u: u8 = 0x49;
+    const i32_le_u: u8 = 0x4d;
     // Arithmetic.
     const i32_add: u8 = 0x6a;
     const i32_sub: u8 = 0x6b;
@@ -722,57 +724,124 @@ pub fn injectGuard(
     );
 }
 
-/// Pure function: produce the guard byte sequence for the corrected
-/// (i32.sub-based) pattern. Math:
-///
-///     offset_in_buffer = local[addr_local] - local[pristine_local]
-///                                          + addr_const_offset
-///     OOB              ⇔ offset_in_buffer > (alloc_size - width)
-///
-/// Bytes:
-///
-///     0x20 <uleb addr_local>           ;; local.get addr_local
-///     0x20 <uleb pristine_local>       ;; local.get pristine_local
-///     0x6b                             ;; i32.sub
-///     [ 0x41 <sleb addr_const_offset>  ;; i32.const  (if offset != 0)
-///       0x6a ]                         ;; i32.add    (if offset != 0)
-///     0x41 <sleb (alloc_size - width)> ;; i32.const max_safe_offset
-///     0x4b                             ;; i32.gt_u
-///     0x04 0x40                        ;; if 0x40
-///     0x00                             ;; unreachable
-///     0x0b                             ;; end
+pub const WasmOp = union(enum) {
+    local_get: u32,
+    local_tee: u32,
+    i32_const: i32,
+    i32_add,
+    i32_sub,
+    i32_shl,
+    i32_shr_u,
+    i32_gt_u,
+    i32_ge_u,
+    i32_lt_u,
+    i32_le_u,
+    i32_eq,
+    i32_ne,
+    i32_eqz,
+    if_void,
+    unreachable_,
+    end,
+};
+
+pub fn emitBytecode(allocator: std.mem.Allocator, ast: []const WasmOp) WeaverError![]u8 {
+    var buf = std.ArrayList(u8).init(allocator);
+    errdefer buf.deinit();
+
+    for (ast) |node| {
+        switch (node) {
+            .local_get => |idx| {
+                try buf.append(Op.local_get);
+                try writeUlebI32(&buf, idx);
+            },
+            .local_tee => |idx| {
+                try buf.append(Op.local_tee);
+                try writeUlebI32(&buf, idx);
+            },
+            .i32_const => |val| {
+                try buf.append(Op.i32_const);
+                try writeSlebI32(&buf, val);
+            },
+            .i32_add => try buf.append(Op.i32_add),
+            .i32_sub => try buf.append(Op.i32_sub),
+            .i32_shl => try buf.append(0x62),
+            .i32_shr_u => try buf.append(0x63),
+            .i32_gt_u => try buf.append(Op.i32_gt_u),
+            .i32_ge_u => try buf.append(Op.i32_ge_u),
+            .i32_lt_u => try buf.append(Op.i32_lt_u),
+            .i32_le_u => try buf.append(Op.i32_le_u),
+            .i32_eq => try buf.append(0x46),
+            .i32_ne => try buf.append(0x47),
+            .i32_eqz => try buf.append(Op.i32_eqz),
+            .if_void => {
+                try buf.append(Op.if_);
+                try buf.append(BlockType.void_);
+            },
+            .unreachable_ => try buf.append(Op.unreachable_),
+            .end => try buf.append(Op.end),
+        }
+    }
+    return try buf.toOwnedSlice();
+}
+
+pub fn evaluateFitness(allocator: std.mem.Allocator, ast: []const WasmOp) WeaverError!usize {
+    const bytes = try emitBytecode(allocator, ast);
+    defer allocator.free(bytes);
+    return bytes.len;
+}
+
+/// Pure function: produce the guard byte sequence using the new Wasm AST.
+/// Constructs candidate sequences, scores them using the fitness evaluator,
+/// and returns the most optimal bytecode sequence.
 pub fn synthesizeGuardBytes(
     allocator: std.mem.Allocator,
     witness: phase10.StoreWitness,
     pristine_local: u32,
 ) WeaverError![]u8 {
-    var buf = std.ArrayList(u8).init(allocator);
-    errdefer buf.deinit();
+    // Shared preamble for offset calculation
+    var common_preamble = std.ArrayList(WasmOp).init(allocator);
+    defer common_preamble.deinit();
 
-    try buf.append(Op.local_get);
-    try writeUlebI32(&buf, witness.addr_local);
-    try buf.append(Op.local_get);
-    try writeUlebI32(&buf, pristine_local);
-    try buf.append(Op.i32_sub);
+    try common_preamble.append(.{ .local_get = witness.addr_local });
+    try common_preamble.append(.{ .local_get = pristine_local });
+    try common_preamble.append(.i32_sub);
 
     if (witness.addr_const_offset != 0) {
-        try buf.append(Op.i32_const);
-        // SLEB32 of a u32 — safe cast because addr_const_offset < 2^31
-        // for any meaningful buffer offset in our fixtures.
-        try writeSlebI32(&buf, @as(i32, @intCast(witness.addr_const_offset)));
-        try buf.append(Op.i32_add);
+        try common_preamble.append(.{ .i32_const = @as(i32, @intCast(witness.addr_const_offset)) });
+        try common_preamble.append(.i32_add);
     }
 
-    try buf.append(Op.i32_const);
     const max_safe: i32 = @as(i32, @intCast(witness.alloc_size - witness.width));
-    try writeSlebI32(&buf, max_safe);
-    try buf.append(Op.i32_gt_u);
-    try buf.append(Op.if_);
-    try buf.append(BlockType.void_);
-    try buf.append(Op.unreachable_);
-    try buf.append(Op.end);
+    try common_preamble.append(.{ .i32_const = max_safe });
 
-    return try buf.toOwnedSlice();
+    // Candidate 1: The bloated i32.le_u + i32.eqz mutation
+    var ast1 = std.ArrayList(WasmOp).init(allocator);
+    defer ast1.deinit();
+    try ast1.appendSlice(common_preamble.items);
+    try ast1.append(.i32_le_u);
+    try ast1.append(.i32_eqz);
+    try ast1.append(.if_void);
+    try ast1.append(.unreachable_);
+    try ast1.append(.end);
+
+    // Candidate 2: The optimal i32.gt_u sequence
+    var ast2 = std.ArrayList(WasmOp).init(allocator);
+    defer ast2.deinit();
+    try ast2.appendSlice(common_preamble.items);
+    try ast2.append(.i32_gt_u);
+    try ast2.append(.if_void);
+    try ast2.append(.unreachable_);
+    try ast2.append(.end);
+
+    // Evaluate fitness (minimize byte footprint)
+    const score1 = try evaluateFitness(allocator, ast1.items);
+    const score2 = try evaluateFitness(allocator, ast2.items);
+
+    if (score2 <= score1) {
+        return try emitBytecode(allocator, ast2.items);
+    } else {
+        return try emitBytecode(allocator, ast1.items);
+    }
 }
 
 // ── Wasm rebuild ───────────────────────────────────────────────────────────
@@ -934,11 +1003,39 @@ pub fn applyAll(
     return current;
 }
 
+/// Like `injectGuard` but takes pre-built guard bytes rather than calling
+/// `synthesizeGuardBytes` internally. Used by `phase12_evaluator` to test
+/// LLM-generated candidate guard sequences. The caller is responsible for
+/// ensuring `body_offset_of_store` is correctly shifted (as `applyAll` does
+/// for the standard path via `findAllocatorCallEnd` + `tee_len`).
+pub fn injectCustomGuardBytes(
+    allocator: std.mem.Allocator,
+    wasm: []const u8,
+    func_idx: u32,
+    body_offset_of_store: usize,
+    guard_bytes: []const u8,
+) WeaverError![]u8 {
+    const layout = try findFuncLayout(allocator, wasm, func_idx);
+    const inst_len = (layout.body_start + layout.body_size_value) - layout.inst_start;
+    const inst_bytes = wasm[layout.inst_start .. layout.inst_start + inst_len];
+    if (body_offset_of_store > inst_bytes.len) return error.UnexpectedEof;
+
+    var new_inst = std.ArrayList(u8).init(allocator);
+    defer new_inst.deinit();
+    try new_inst.appendSlice(inst_bytes[0..body_offset_of_store]);
+    try new_inst.appendSlice(guard_bytes);
+    try new_inst.appendSlice(inst_bytes[body_offset_of_store..]);
+
+    const decl_size = layout.inst_start - layout.body_start;
+    const decls = wasm[layout.body_start .. layout.body_start + decl_size];
+    return try rebuildWasm(allocator, wasm, layout, decls, new_inst.items, decls.len + new_inst.items.len, 0);
+}
+
 /// Helper that returns the body-offset of the first byte AFTER the
 /// allocator's `call` instruction. Shared logic with `cloneAllocBase`'s
 /// scanner; factored so `applyAll` can compute the shift threshold
 /// before calling `cloneAllocBase`.
-fn findAllocatorCallEnd(
+pub fn findAllocatorCallEnd(
     allocator: std.mem.Allocator,
     wasm: []const u8,
     func_idx: u32,

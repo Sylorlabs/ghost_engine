@@ -758,6 +758,28 @@ pub fn build(b: *std.Build) void {
         phase11_step.dependOn(&run_phase11.step);
     }
 
+    // ── Phase 12: LLM-guided CEGIS evaluator (stdin/stdout JSON bridge).
+    // Build with:  zig build phase12-evaluator
+    // Run via:     python3 llm_orchestrator.py src/compiler/bin_a_vulnerable.wasm
+    {
+        const phase12 = b.addExecutable(.{
+            .name = "phase12_evaluator",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/compiler/phase12_evaluator.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        phase12.root_module.linkSystemLibrary("c", .{});
+        phase12.root_module.linkSystemLibrary("z3", .{});
+        phase12.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+        phase12.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include/x86_64-linux-gnu" });
+        phase12.root_module.addLibraryPath(.{ .cwd_relative = "/usr/lib/x86_64-linux-gnu" });
+        b.installArtifact(phase12);
+        const phase12_step = b.step("phase12-evaluator", "Build Phase 12 LLM-CEGIS evaluator binary (JSON stdin/stdout)");
+        phase12_step.dependOn(&b.addInstallArtifact(phase12, .{}).step);
+    }
+
     // ── Phase 2.0: V2 bootstrap — dynamic codebook + SyGuS axiom discovery + Z3 integration proof ──
     // Same decoupled std+libz3 wiring. Run with:  zig build v2-bootstrap
     {
