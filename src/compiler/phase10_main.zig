@@ -28,6 +28,11 @@ const BIN_D_PHASE9 = @embedFile("wprobe.wasm");
 // size) where size is at arg index 1. Proves size_arg_index routing works: the
 // engine skips alignment (index 0) and extracts the i32.const 16 size literal.
 const BIN_F_POOL = @embedFile("bin_f_aligned_alloc.wasm");
+// Phase 10.3 — Poison Pill fixtures. Both call dummy_alloc (so R2 passes) and
+// then execute a forbidden opcode the engine MUST refuse loudly rather than
+// silently lower or truncate.
+const BIN_G_FLOAT = @embedFile("bin_g_float_poison.wasm");
+const BIN_H_I64 = @embedFile("bin_h_i64_poison.wasm");
 
 // Phase 10.2 — pluggable allocator. The harness chooses the contract; the
 // analyzer no longer hard-codes any allocator name. Swap `ALLOC_CFG` to
@@ -98,6 +103,14 @@ pub fn main() !void {
         // literal from args[1], model a 16-byte buffer, and return SAT when the
         // loop store at offset seed*4+8 (iter 3, seed>=2) escapes the buffer.
         .{ .label = "F (pool_alloc/2arg) ", .bytes = BIN_F_POOL, .cfg = ALLOC_CFG_POOL, .expect_analyzes = true, .expect_z3 = .sat },
+        // Phase 10.3 — Float Poison Pill. Allocator import resolves (R2 OK),
+        // then the function runs f32.convert_i32_s / f32.mul. The engine must
+        // refuse with FloatTheoryUnsupported, NOT lower to a real Z3 query.
+        .{ .label = "G (float poison)   ", .bytes = BIN_G_FLOAT, .cfg = ALLOC_CFG, .expect_analyzes = false, .expect_z3 = null, .expect_reason_contains = "FloatTheoryUnsupported" },
+        // Phase 10.3 — I64 Poison Pill. Allocator import resolves, then the
+        // function runs i64.extend_i32_u / i64.const / i64.add. The engine
+        // must refuse with I64TheoryUnsupported rather than silently truncate.
+        .{ .label = "H (i64 poison)     ", .bytes = BIN_H_I64, .cfg = ALLOC_CFG, .expect_analyzes = false, .expect_z3 = null, .expect_reason_contains = "I64TheoryUnsupported" },
     };
 
     var all_pass = true;

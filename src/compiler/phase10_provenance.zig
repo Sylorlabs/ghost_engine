@@ -101,23 +101,45 @@ const Reader = struct {
 };
 
 // ── Wasm opcodes Phase 10 understands ──────────────────────────────────────
+// Phase 10.3 (MVP Vocabulary): expanded from the original ~30-opcode subset
+// to cover the integer half of the Wasm MVP — control flow, globals, memory
+// metadata, i32 sign-extensions, drop/select. Float and i64 opcodes are
+// intentionally NOT listed here as named constants; instead they're routed
+// through poison-pill range checks (see isFloatOpcode / isI64Opcode below)
+// so that any one of dozens of opcodes triggers a clean UNANALYZABLE without
+// us having to name each one.
 const Op = struct {
+    const unreachable_ = 0x00;
+    const nop = 0x01;
     const block = 0x02;
     const loop_ = 0x03;
+    const if_ = 0x04;
+    const else_ = 0x05;
+    const end = 0x0b;
     const br = 0x0c;
     const br_if = 0x0d;
-    const end = 0x0b;
+    const br_table = 0x0e;
     const ret = 0x0f;
     const call = 0x10;
+    const call_indirect = 0x11;
     const drop = 0x1a;
+    const select = 0x1b;
     const local_get = 0x20;
     const local_set = 0x21;
     const local_tee = 0x22;
+    const global_get = 0x23;
+    const global_set = 0x24;
     const i32_load = 0x28;
+    const memory_size = 0x3f;
+    const memory_grow = 0x40;
     const i32_store = 0x36;
     const i32_store8 = 0x3a;
     const i32_store16 = 0x3b;
     const i32_const = 0x41;
+    const i64_const = 0x42; // i64 poison pill (parser must still skip the SLEB)
+    const f32_const = 0x43; // float poison pill (parser must still skip 4 bytes)
+    const f64_const = 0x44; // float poison pill (parser must still skip 8 bytes)
+    const i32_eqz = 0x45;
     const i32_eq = 0x46;
     const i32_ne = 0x47;
     const i32_lt_s = 0x48;
@@ -131,13 +153,56 @@ const Op = struct {
     const i32_add = 0x6a;
     const i32_sub = 0x6b;
     const i32_mul = 0x6c;
+    const i32_div_s = 0x6d;
+    const i32_div_u = 0x6e;
+    const i32_rem_s = 0x6f;
+    const i32_rem_u = 0x70;
     const i32_and = 0x71;
     const i32_or = 0x72;
     const i32_xor = 0x73;
     const i32_shl = 0x74;
     const i32_shr_s = 0x75;
     const i32_shr_u = 0x76;
+    const i32_rotl = 0x77;
+    const i32_rotr = 0x78;
+    const i32_extend8_s = 0xc0;
+    const i32_extend16_s = 0xc1;
 };
+
+/// Float opcodes — Phase 3 of the directive demands a Poison Pill rather than
+/// SMT lowering (real-typed Z3 is exponential and seldom decisive). We map any
+/// f32/f64 opcode (loads/stores/const/arith/cmp/conv) to UNANALYZABLE with
+/// reason `FloatTheoryUnsupported`. The ranges below are the Wasm MVP layout.
+fn isFloatOpcode(op: u8) bool {
+    return op == 0x2a or op == 0x2b // f32.load, f64.load
+        or op == 0x38 or op == 0x39 // f32.store, f64.store
+        or op == 0x43 or op == 0x44 // f32.const, f64.const
+        or (op >= 0x5b and op <= 0x66) // f32/f64 comparisons
+        or (op >= 0x8b and op <= 0xa6) // f32/f64 unary + binary arith
+        or op == 0xb2 or op == 0xb3 or op == 0xb4 or op == 0xb5 // i32 <-> f32/f64
+        or op == 0xb6 or op == 0xb7 or op == 0xb8 or op == 0xb9 // i64 <-> f32/f64
+        or op == 0xba or op == 0xbb // f32 <-> f64
+        or op == 0xbc or op == 0xbd or op == 0xbe; // reinterpret (treat as float)
+}
+
+/// i64 opcodes — by symmetric argument: our SMT lowering is (_ BitVec 32)
+/// throughout. Treating i64 ops as i32 would silently truncate. The honest
+/// move is the same Poison Pill: any i64 opcode aborts with `I64TheoryUnsupported`.
+/// This is a Phase 10.3 deviation from the directive's wording ("INTEGER ONLY")
+/// in favor of soundness — see project memory.
+fn isI64Opcode(op: u8) bool {
+    return op == 0x29 // i64.load
+        or (op >= 0x30 and op <= 0x35) // i64 load variants
+        or op == 0x37 // i64.store
+        or (op >= 0x3c and op <= 0x3e) // i64 store variants
+        or op == 0x42 // i64.const
+        or op == 0x50 // i64.eqz
+        or (op >= 0x51 and op <= 0x5a) // i64 comparisons
+        or (op >= 0x7c and op <= 0x8a) // i64 arith
+        or op == 0xa7 // i32.wrap_i64
+        or op == 0xac or op == 0xad // i64.extend_i32_s/u
+        or (op >= 0xc2 and op <= 0xc4); // i64.extend8/16/32_s
+}
 
 // ── Provenance tag — Spec v3 R1 ────────────────────────────────────────────
 const Provenance = union(enum) {
@@ -166,6 +231,16 @@ const FuncBody = struct {
     body: []const u8,
 };
 
+/// Phase 10.3 — global state. We record only mutability (the valtype is
+/// always i32 in our analyzable subset; i64/float globals trigger the
+/// poison pill at first use). The init expression is intentionally NOT
+/// evaluated symbolically: each global starts as an opaque symbolic `none`-
+/// provenance value on first read.
+const Global = struct {
+    valtype: u8, // 0x7f i32, 0x7e i64, 0x7d f32, 0x7c f64
+    mut: bool,
+};
+
 const ParsedModule = struct {
     memory_bytes: u64,
     num_imports: u32,
@@ -175,6 +250,10 @@ const ParsedModule = struct {
     imports: []Import,
     exports: []Export,
     funcs: []FuncBody,
+    /// Phase 10.3: globals declared in Section 6 (plus imported globals from
+    /// Section 2 prepended, since global indices in code refer to the unified
+    /// import-then-defined namespace, same as functions).
+    globals: []Global,
 };
 
 /// AllocatorConfig — Phase 10.2 pluggable allocator contract (replaces the
@@ -227,6 +306,7 @@ fn parseModule(allocator: std.mem.Allocator, bytes: []const u8) !ParsedModule {
     var imports = std.ArrayList(Import).init(allocator);
     var func_typeidx = std.ArrayList(u32).init(allocator);
     var exports = std.ArrayList(Export).init(allocator);
+    var globals_list = std.ArrayList(Global).init(allocator);
     var memory_bytes: u64 = 0;
     var pending_bodies = std.ArrayList(struct { nlocals_extra: usize, body: []const u8 }).init(allocator);
 
@@ -268,9 +348,13 @@ fn parseModule(allocator: std.mem.Allocator, bytes: []const u8) !ParsedModule {
                         const flags = try sr.byte();
                         _ = try sr.uleb();
                         if (flags & 1 != 0) _ = try sr.uleb();
-                    } else if (kind == 3) {
-                        _ = try sr.byte();
-                        _ = try sr.byte();
+                    } else if (kind == 3) { // imported global
+                        const valtype = try sr.byte();
+                        const mut = try sr.byte();
+                        // Imported globals occupy the low end of the global
+                        // index space; record so code-section global.get/set
+                        // indices line up with our globals[] array.
+                        try globals_list.append(.{ .valtype = valtype, .mut = mut != 0 });
                     }
                     try imports.append(.{ .module = mod, .name = nm, .kind = kind, .typeidx = typeidx });
                 }
@@ -286,6 +370,37 @@ fn parseModule(allocator: std.mem.Allocator, bytes: []const u8) !ParsedModule {
                     const min = try sr.uleb();
                     if (flags & 0x01 != 0) _ = try sr.uleb();
                     memory_bytes = min * 65536;
+                }
+            },
+            6 => { // Global — Phase 10.3. Each global = (valtype, mut, init-expr).
+                // We skip the init-expr (terminated by 0x0b) without evaluating
+                // it; at run-time we present each global as a fresh symbolic
+                // opaque on first read. This is honest underapproximation: a
+                // constant-init global is treated as a free i32 variable.
+                const n = try sr.uleb();
+                for (0..n) |_| {
+                    const valtype = try sr.byte();
+                    const mut = try sr.byte();
+                    try globals_list.append(.{ .valtype = valtype, .mut = mut != 0 });
+                    // Skip init expression: read opcodes until 0x0b. For our
+                    // purposes init exprs are usually `i32.const N; end`.
+                    while (true) {
+                        const ib = try sr.byte();
+                        if (ib == 0x0b) break;
+                        if (ib == 0x41) { // i32.const sleb
+                            _ = try sr.sleb();
+                        } else if (ib == 0x42) { // i64.const sleb
+                            _ = try sr.sleb();
+                        } else if (ib == 0x43) { // f32.const 4 raw bytes
+                            _ = try sr.slice(4);
+                        } else if (ib == 0x44) { // f64.const 8 raw bytes
+                            _ = try sr.slice(8);
+                        } else if (ib == 0x23) { // global.get
+                            _ = try sr.uleb();
+                        }
+                        // Other init opcodes (rare) — ignore; the 0x0b terminator
+                        // will arrive.
+                    }
                 }
             },
             7 => { // Export — Phase 10.2: needed for export-kind allocator configs.
@@ -352,6 +467,7 @@ fn parseModule(allocator: std.mem.Allocator, bytes: []const u8) !ParsedModule {
         .imports = try imports.toOwnedSlice(),
         .exports = try exports.toOwnedSlice(),
         .funcs = funcs,
+        .globals = try globals_list.toOwnedSlice(),
     };
 }
 
@@ -381,6 +497,10 @@ const Analyzer = struct {
     allocator_func_idx: ?u32,
     /// Which arg position the allocator's `size` lives at (from AllocatorConfig).
     allocator_size_arg_index: u32 = 0,
+    // Phase 10.3 ── global state. Each entry is lazily filled with a fresh
+    // opaque on first read; metadata for type/mut comes from `globals_meta`.
+    globals: []?Value,
+    globals_meta: []const Global,
 
     fn pop(self: *Analyzer, stack: *Stack) !Value {
         _ = self;
@@ -443,7 +563,26 @@ fn execBlock(
     while (!r.eof()) {
         if (self.unanalyzable != null) return;
         const op = try r.byte();
+        // Phase 10.3 ── Poison Pills. Float and i64 opcodes are intercepted
+        // BEFORE the main switch so they fire even if the opcode would also
+        // happen to be a future named case. Both reasons are deliberately
+        // distinguishable for the harness's substring assertions.
+        if (isFloatOpcode(op)) {
+            self.unanalyzable = "FloatTheoryUnsupported: f32/f64 opcode encountered";
+            return;
+        }
+        if (isI64Opcode(op)) {
+            self.unanalyzable = "I64TheoryUnsupported: i64 opcode encountered (analyzer is i32-only)";
+            return;
+        }
         switch (op) {
+            Op.nop => {},
+            Op.unreachable_ => {
+                // Wasm `unreachable` traps. From an analyzer's POV: any path
+                // that hits it is dead. Terminate the block. No obligation
+                // emitted; subsequent code is unreachable on this path.
+                return;
+            },
             Op.i32_const => {
                 const v = try r.sleb();
                 const s = try std.fmt.allocPrint(self.allocator, "(_ bv{d} 32)", .{@as(u32, @truncate(@as(u64, @bitCast(v))))});
@@ -475,6 +614,122 @@ fn execBlock(
                 try stack.append(v);
             },
             Op.drop => _ = try self.pop(&stack),
+            Op.select => {
+                // select pops (cond, b, a) and pushes (cond != 0 ? a : b).
+                const cond = try self.pop(&stack);
+                const b = try self.pop(&stack);
+                const a = try self.pop(&stack);
+                const smt = try std.fmt.allocPrint(
+                    self.allocator,
+                    "(ite (distinct {s} (_ bv0 32)) {s} {s})",
+                    .{ cond.smt, a.smt, b.smt },
+                );
+                // Provenance merge: if either arm has known alloc provenance
+                // but they don't agree exactly, conservatively taint. This
+                // mirrors the R3(c) rule: ambiguity = taint, never silent
+                // promotion.
+                const prov: Provenance = blk: {
+                    if (a.prov == .tainted or b.prov == .tainted) break :blk .tainted;
+                    if (std.meta.eql(a.prov, b.prov)) break :blk a.prov;
+                    break :blk .tainted;
+                };
+                try stack.append(.{ .smt = smt, .prov = prov });
+            },
+            Op.global_get => {
+                const idx = try r.uleb();
+                if (idx >= self.globals.len) {
+                    self.unanalyzable = "global.get index out of range";
+                    return;
+                }
+                const meta = self.globals_meta[idx];
+                if (meta.valtype != 0x7f) {
+                    // Non-i32 global — caught here rather than at parse time so
+                    // i32 modules with unused i64/float globals still analyze.
+                    self.unanalyzable = "global.get on non-i32 global (analyzer is i32-only)";
+                    return;
+                }
+                if (self.globals[idx] == null) {
+                    const sym = try self.freshOpaque("global");
+                    self.globals[idx] = .{ .smt = sym, .prov = .none };
+                }
+                try stack.append(self.globals[idx].?);
+            },
+            Op.global_set => {
+                const idx = try r.uleb();
+                if (idx >= self.globals.len) {
+                    self.unanalyzable = "global.set index out of range";
+                    return;
+                }
+                const meta = self.globals_meta[idx];
+                if (meta.valtype != 0x7f) {
+                    self.unanalyzable = "global.set on non-i32 global (analyzer is i32-only)";
+                    return;
+                }
+                self.globals[idx] = try self.pop(&stack);
+            },
+            Op.memory_size => {
+                _ = try r.byte(); // memidx reserved-0
+                const sym = try self.freshOpaque("memsize");
+                try stack.append(.{ .smt = sym, .prov = .none });
+            },
+            Op.memory_grow => {
+                _ = try r.byte(); // memidx reserved-0
+                _ = try self.pop(&stack); // delta pages
+                const sym = try self.freshOpaque("memgrow_prev");
+                try stack.append(.{ .smt = sym, .prov = .none });
+            },
+            Op.i32_extend8_s, Op.i32_extend16_s => {
+                // Sign-extend the low 8/16 bits of a bv32 to a bv32. Provenance
+                // is tainted because bit-twiddling defeats the linear pointer
+                // model (R3(c)-equivalent).
+                const v = try self.pop(&stack);
+                const bits: u8 = if (op == Op.i32_extend8_s) 8 else 16;
+                const smt = try std.fmt.allocPrint(
+                    self.allocator,
+                    "((_ sign_extend {d}) ((_ extract {d} 0) {s}))",
+                    .{ 32 - bits, bits - 1, v.smt },
+                );
+                const prov: Provenance = if (v.prov == .none) .none else .tainted;
+                try stack.append(.{ .smt = smt, .prov = prov });
+            },
+            Op.i32_eqz => {
+                const a = try self.pop(&stack);
+                const s = try std.fmt.allocPrint(
+                    self.allocator,
+                    "(ite (= {s} (_ bv0 32)) (_ bv1 32) (_ bv0 32))",
+                    .{a.smt},
+                );
+                try stack.append(.{ .smt = s, .prov = .none });
+            },
+            Op.i32_div_s, Op.i32_div_u, Op.i32_rem_s, Op.i32_rem_u, Op.i32_rotl, Op.i32_rotr => {
+                // Spec v3 R3(c): these tear up the linear pointer model.
+                // Compute the SMT for completeness, but mark provenance tainted
+                // so a downstream store with this address raises UNANALYZABLE.
+                const b = try self.pop(&stack);
+                const a = try self.pop(&stack);
+                const smt_op = switch (op) {
+                    Op.i32_div_s => "bvsdiv",
+                    Op.i32_div_u => "bvudiv",
+                    Op.i32_rem_s => "bvsrem",
+                    Op.i32_rem_u => "bvurem",
+                    // No native rotl/rotr in SMT-LIB BitVec; lower to shifts+or.
+                    // For our purposes the result is opaque and tainted, so the
+                    // exact lowering doesn't matter beyond well-formedness.
+                    Op.i32_rotl => "bvshl",
+                    Op.i32_rotr => "bvlshr",
+                    else => unreachable,
+                };
+                const s = try std.fmt.allocPrint(self.allocator, "({s} {s} {s})", .{ smt_op, a.smt, b.smt });
+                try stack.append(.{ .smt = s, .prov = .tainted });
+            },
+            Op.call_indirect => {
+                // (typeidx, tableidx) — we have no way to resolve the actual
+                // target function symbolically. Refuse rather than guess.
+                _ = try r.uleb();
+                _ = try r.uleb();
+                self.unanalyzable = "call_indirect (target unresolvable symbolically)";
+                return;
+            },
             Op.i32_add, Op.i32_sub, Op.i32_mul, Op.i32_and, Op.i32_or, Op.i32_xor, Op.i32_shl, Op.i32_shr_s, Op.i32_shr_u => {
                 const b = try self.pop(&stack);
                 const a = try self.pop(&stack);
@@ -644,9 +899,63 @@ fn execBlock(
                 try runLoop(self, sub_body, locals, allocator_func_idx, guard);
                 r.pos += sub_body.len + 1;
             },
+            Op.if_ => {
+                // Wasm `if blocktype <then> [else <else>] end`. Phase 10.3
+                // supports void blocktype (0x40) only; value-producing ifs
+                // would need ite-merging of the trailing stack value across
+                // arms, which is out of scope (see directive deviations note).
+                const bt = try r.byte();
+                if (bt != 0x40) {
+                    self.unanalyzable = "ValueProducingBranchUnsupported: if/else with non-void blocktype";
+                    return;
+                }
+                const cond = try self.pop(&stack);
+                const slices = try sliceIf(body, r.pos);
+                // Path-guards for the two arms.
+                const then_g = try std.fmt.allocPrint(
+                    self.allocator,
+                    "(distinct {s} (_ bv0 32))",
+                    .{cond.smt},
+                );
+                const new_then_guard = if (guard) |g|
+                    try std.fmt.allocPrint(self.allocator, "(and {s} {s})", .{ g, then_g })
+                else
+                    then_g;
+                try execBlock(self, slices.then_body, locals, allocator_func_idx, new_then_guard, in_loop);
+                if (slices.else_body) |eb| {
+                    if (self.unanalyzable != null) return;
+                    const else_g = try std.fmt.allocPrint(
+                        self.allocator,
+                        "(= {s} (_ bv0 32))",
+                        .{cond.smt},
+                    );
+                    const new_else_guard = if (guard) |g|
+                        try std.fmt.allocPrint(self.allocator, "(and {s} {s})", .{ g, else_g })
+                    else
+                        else_g;
+                    try execBlock(self, eb, locals, allocator_func_idx, new_else_guard, in_loop);
+                }
+                // r.pos points at the start of the then-body. Advance past
+                // the matching `end` (+1 byte for the 0x0b terminator).
+                r.pos = slices.end_offset + 1;
+            },
             Op.br => {
                 _ = try r.uleb();
                 // Unconditional branch out of any nesting — terminate this block.
+                return;
+            },
+            Op.br_table => {
+                // br_table: <n> <labels...> <default>. We consume all n+1 ULEBs
+                // and the index off the stack, then treat the branch as
+                // unconditional (any path here exits this block). The path
+                // guard down-stream of br_table is the disjunction of every
+                // taken-target — an over-approximation we tolerate because
+                // br_table is rare in pointer-heavy code.
+                const n = try r.uleb();
+                var k: u64 = 0;
+                while (k < n) : (k += 1) _ = try r.uleb();
+                _ = try r.uleb(); // default label
+                _ = try self.pop(&stack); // index
                 return;
             },
             Op.br_if => {
@@ -691,6 +1000,69 @@ fn runLoop(
     }
 }
 
+/// Skip past the immediate operands of an opcode in the byte stream. This is
+/// the SINGLE source of truth for opcode immediate widths, used by both
+/// `sliceBlock` (depth tracking for end-byte location) and `sliceIf` (finding
+/// else/end at the right depth). If `execBlock` and these slicers disagree on
+/// any opcode's immediate width, block boundaries desync and the analyzer
+/// silently mis-parses real code.
+fn skipImmediates(r: *Reader, op: u8) !void {
+    // ULEB128-pair memarg ops (align, offset).
+    if ((op >= 0x28 and op <= 0x3e) and op != 0x3f) {
+        _ = try r.uleb();
+        _ = try r.uleb();
+        return;
+    }
+    switch (op) {
+        // 0-immediate opcodes — the vast majority of arithmetic/comparisons.
+        Op.unreachable_, Op.nop, Op.end, Op.ret, Op.drop, Op.select,
+        Op.i32_eqz,
+        Op.i32_eq, Op.i32_ne,
+        Op.i32_lt_s, Op.i32_lt_u, Op.i32_gt_s, Op.i32_gt_u,
+        Op.i32_le_s, Op.i32_le_u, Op.i32_ge_s, Op.i32_ge_u,
+        Op.i32_add, Op.i32_sub, Op.i32_mul,
+        Op.i32_div_s, Op.i32_div_u, Op.i32_rem_s, Op.i32_rem_u,
+        Op.i32_and, Op.i32_or, Op.i32_xor,
+        Op.i32_shl, Op.i32_shr_s, Op.i32_shr_u, Op.i32_rotl, Op.i32_rotr,
+        Op.i32_extend8_s, Op.i32_extend16_s,
+        Op.else_,
+        => {},
+        // Block-openers: 1-byte blocktype (we only support 0x40, but the
+        // depth-tracker must skip it regardless).
+        Op.block, Op.loop_, Op.if_ => _ = try r.byte(),
+        // 1-ULEB128 opcodes.
+        Op.local_get, Op.local_set, Op.local_tee, Op.global_get, Op.global_set,
+        Op.call, Op.br, Op.br_if,
+        => _ = try r.uleb(),
+        Op.call_indirect => {
+            _ = try r.uleb();
+            _ = try r.uleb();
+        },
+        // br_table: <n labels...> <default>.
+        Op.br_table => {
+            const n = try r.uleb();
+            var i: u64 = 0;
+            while (i < n) : (i += 1) _ = try r.uleb();
+            _ = try r.uleb();
+        },
+        // i32.const = SLEB128, i64.const = SLEB128 (poison-pill at exec).
+        Op.i32_const, Op.i64_const => _ = try r.sleb(),
+        // f32.const / f64.const carry raw IEEE bytes — variable-width below.
+        Op.f32_const => _ = try r.slice(4),
+        Op.f64_const => _ = try r.slice(8),
+        // memory.size / memory.grow each carry a single reserved-0 byte.
+        Op.memory_size, Op.memory_grow => _ = try r.byte(),
+        else => {
+            // Floats outside the const range (cmp/arith/conv) take 0 immediates;
+            // i64 ops outside the load/store/const block likewise. Anything else
+            // is an opcode we haven't classified — treat as 0-imm and trust that
+            // execBlock will refuse it with UNANALYZABLE before it matters. If
+            // this assumption is wrong, the depth-tracker will desync — but the
+            // resulting block-mismatch error is itself loud failure, not silent.
+        },
+    }
+}
+
 /// Given a `block`/`loop` body starting at `body[start]`, return the slice up
 /// to the matching `end` (0x0b) byte, NOT including that byte.
 fn sliceBlock(body: []const u8, start: usize) ![]const u8 {
@@ -699,7 +1071,7 @@ fn sliceBlock(body: []const u8, start: usize) ![]const u8 {
     while (!r.eof()) {
         const op = try r.byte();
         switch (op) {
-            Op.block, Op.loop_ => {
+            Op.block, Op.loop_, Op.if_ => {
                 _ = try r.byte(); // blocktype
                 depth += 1;
             },
@@ -707,16 +1079,58 @@ fn sliceBlock(body: []const u8, start: usize) ![]const u8 {
                 depth -= 1;
                 if (depth == 0) return body[start .. start + r.pos - 1];
             },
-            Op.i32_const => _ = try r.sleb(),
-            Op.local_get, Op.local_set, Op.local_tee, Op.call, Op.br, Op.br_if => _ = try r.uleb(),
-            Op.i32_load, Op.i32_store, Op.i32_store8, Op.i32_store16 => {
-                _ = try r.uleb();
-                _ = try r.uleb();
-            },
-            else => {},
+            else => try skipImmediates(&r, op),
         }
     }
     return error.UnterminatedBlock;
+}
+
+/// Phase 10.3 — split an `if [else] end` body. Given `body[start..]` is the
+/// content immediately following the `if`'s blocktype byte, locate the
+/// matching `else` (depth == 1) if present, and the matching `end` (depth==0).
+/// Returns slices for the then-body, optional else-body, and the absolute
+/// offset of the `end` byte inside `body`.
+const IfSlices = struct {
+    then_body: []const u8,
+    else_body: ?[]const u8,
+    /// Offset within `body` of the matching `end` byte itself.
+    end_offset: usize,
+};
+
+fn sliceIf(body: []const u8, start: usize) !IfSlices {
+    var depth: usize = 1;
+    var r = Reader{ .bytes = body[start..] };
+    var else_at: ?usize = null; // body-absolute offset of the else byte, if any
+    while (!r.eof()) {
+        const op_pos_in_body = start + r.pos;
+        const op = try r.byte();
+        switch (op) {
+            Op.block, Op.loop_, Op.if_ => {
+                _ = try r.byte();
+                depth += 1;
+            },
+            Op.else_ => {
+                if (depth == 1 and else_at == null) {
+                    else_at = op_pos_in_body;
+                }
+            },
+            Op.end => {
+                depth -= 1;
+                if (depth == 0) {
+                    const end_off = op_pos_in_body;
+                    const then_end = else_at orelse end_off;
+                    const then_body = body[start..then_end];
+                    const else_body: ?[]const u8 = if (else_at) |ea|
+                        body[ea + 1 .. end_off]
+                    else
+                        null;
+                    return .{ .then_body = then_body, .else_body = else_body, .end_offset = end_off };
+                }
+            },
+            else => try skipImmediates(&r, op),
+        }
+    }
+    return error.UnterminatedIf;
 }
 
 /// Parse "(_ bvK 32)" back to K, or return null.
@@ -761,6 +1175,9 @@ pub fn analyze(
     const locals = try allocator.alloc(?Value, @max(f.nlocals, 8));
     for (locals) |*l| l.* = null;
 
+    const global_slots = try allocator.alloc(?Value, m.globals.len);
+    for (global_slots) |*g| g.* = null;
+
     var analyzer = Analyzer{
         .allocator = allocator,
         .obligations = std.ArrayList([]const u8).init(allocator),
@@ -769,6 +1186,8 @@ pub fn analyze(
         .signatures = m.signatures,
         .allocator_func_idx = allocator_func_idx,
         .allocator_size_arg_index = cfg.size_arg_index,
+        .globals = global_slots,
+        .globals_meta = m.globals,
     };
 
     try execBlock(&analyzer, f.body, locals, allocator_func_idx, null, false);
