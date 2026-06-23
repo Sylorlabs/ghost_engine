@@ -1,5 +1,5 @@
 const std = @import("std");
-const triad = @import("triad.zig"); // RuneRank + RANK_NOISE_TTL_MS (the rank ladder; VSA-free)
+const rank = @import("rank.zig"); // RuneRank + RANK_NOISE_TTL_MS — VSA-free, no triad/vsa pull
 const sys = @import("sys.zig");
 const slat = @import("invention/structured_lattice.zig");
 
@@ -17,7 +17,7 @@ pub const ForgeConfig = struct {
     promotion_sweep_interval_ms: u64 = 60_000,
     log_promotions: bool = true,
     log_prunes: bool = true,
-    query_min_rank: triad.RuneRank = .pattern,
+    query_min_rank: rank.RuneRank = .pattern,
 };
 
 pub const ForgeStats = struct {
@@ -69,7 +69,7 @@ pub const ForgeEngine = struct {
     /// Periodic maintenance: prune stale Rank-5 noise.
     pub fn tick(self: *ForgeEngine, now_ms: u64) void {
         if (now_ms -| self.stats.last_prune_ms >= self.forge_config.prune_interval_ms) {
-            const dropped = self.store.prune(now_ms, triad.RANK_NOISE_TTL_MS);
+            const dropped = self.store.prune(now_ms, rank.RANK_NOISE_TTL_MS);
             self.stats.total_pruned += dropped;
             self.stats.last_prune_ms = now_ms;
             if (self.forge_config.log_prunes and dropped > 0) sys.print("[FORGE] Pruned {d} stale Noise runes\n", .{dropped});
@@ -110,7 +110,7 @@ test "ForgeEngine verify promotes rank" {
     defer forge.deinit();
     const slot = forge.observe(42, 0x1234, 1000);
     forge.verify(slot, 2000);
-    try std.testing.expectEqual(triad.RuneRank.verified, forge.search(42).?.rank);
+    try std.testing.expectEqual(rank.RuneRank.verified, forge.search(42).?.rank);
 }
 
 test "ForgeEngine tick prunes stale noise" {
@@ -118,7 +118,7 @@ test "ForgeEngine tick prunes stale noise" {
     defer forge.deinit();
     _ = forge.observe(42, 0x1, 0);
     try std.testing.expectEqual(@as(usize, 1), forge.store.activeCount());
-    forge.tick(triad.RANK_NOISE_TTL_MS + 1);
+    forge.tick(rank.RANK_NOISE_TTL_MS + 1);
     try std.testing.expectEqual(@as(usize, 0), forge.store.activeCount());
     try std.testing.expect(forge.stats.total_pruned > 0);
 }

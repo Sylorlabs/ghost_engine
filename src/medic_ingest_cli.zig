@@ -5,7 +5,7 @@
 //! readable. (Similarity matching, when needed, is feature_sim.zig — but the ingest path only stores + ranks.)
 const std = @import("std");
 const core = @import("ghost_core");
-const RuneRank = core.triad.RuneRank;
+const RuneRank = core.rank.RuneRank;
 
 const SHARD = ".ghost/medic/diagnostics.tsv";
 

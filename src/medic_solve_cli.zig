@@ -5,7 +5,7 @@
 //! was hardcoded anyway, so we run it directly. generate→verify→keep on structured runes.
 const std = @import("std");
 const core = @import("ghost_core");
-const RuneRank = core.triad.RuneRank;
+const RuneRank = core.rank.RuneRank;
 
 const SHARD = ".ghost/medic/diagnostics.tsv";
 const FIX_CMD = "pip install --break-system-packages jinja2"; // the proposed repair (was bound into a rune)
