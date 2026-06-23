@@ -577,21 +577,23 @@ pub fn build(b: *std.Build) void {
         }
     }
 
-    const zenith_bridge_lib = b.addLibrary(.{
-        .name = "zenith_wingman_bridge",
-        .linkage = .dynamic,
-        .use_llvm = use_llvm,
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/zenith/bridge.zig"),
-            .target = target,
-            .optimize = .ReleaseFast,
-            .code_model = .small,
-            .strip = true,
-            .omit_frame_pointer = true,
-        }),
-    });
-    zenith_bridge_lib.want_lto = use_llvm != false;
-    b.installArtifact(zenith_bridge_lib);
+    // [invention-engine branch] zenith_wingman_bridge disabled: src/zenith/{bridge,wingman}.zig are not present
+    // in tracked history at this commit, so installing it breaks the default build. Re-enable once those land.
+    // const zenith_bridge_lib = b.addLibrary(.{
+    //     .name = "zenith_wingman_bridge",
+    //     .linkage = .dynamic,
+    //     .use_llvm = use_llvm,
+    //     .root_module = b.createModule(.{
+    //         .root_source_file = b.path("src/zenith/bridge.zig"),
+    //         .target = target,
+    //         .optimize = .ReleaseFast,
+    //         .code_model = .small,
+    //         .strip = true,
+    //         .omit_frame_pointer = true,
+    //     }),
+    // });
+    // zenith_bridge_lib.want_lto = use_llvm != false;
+    // b.installArtifact(zenith_bridge_lib);
 
     // ── 8. Run Step ──
     const run_cmd = b.addRunArtifact(monolith);
@@ -622,6 +624,38 @@ pub fn build(b: *std.Build) void {
         const run_verified_swap = b.addRunArtifact(verified_swap);
         const verified_swap_step = b.step("verified-swap", "Build+run the Phase 5 two-stage geometric compiler demo (validator + real Z3)");
         verified_swap_step.dependOn(&run_verified_swap.step);
+    }
+
+    // ── Invention / discovery tools (moved from the boundary_crossing research lab) ──
+    // Pure-std, beyond-XOR (integer ADD/MUL) generate→certify→keep loops. Self-contained like verified_swap:
+    // they build and run even while ghost_core is mid-change. `zig build discover` builds them all into zig-out/bin.
+    {
+        const InvTool = struct { name: []const u8, root: []const u8 };
+        const invention_tools = [_]InvTool{
+            .{ .name = "ghost_discover_laws", .root = "src/invention/discover_laws.zig" },
+            .{ .name = "ghost_feature_invent", .root = "src/invention/feature_invent.zig" },
+            .{ .name = "ghost_invent_sensors", .root = "src/invention/invent_sensors.zig" },
+            .{ .name = "ghost_invent_compound", .root = "src/invention/invent_compound.zig" },
+            .{ .name = "ghost_labs_search", .root = "src/invention/labs_search.zig" },
+            .{ .name = "ghost_closedform", .root = "src/invention/discover_closedform.zig" },
+            .{ .name = "ghost_auto_discover", .root = "src/invention/auto_discover.zig" },
+            .{ .name = "ghost_divisor_discover", .root = "src/invention/divisor_discover.zig" },
+            .{ .name = "ghost_double_discover", .root = "src/invention/double_discover.zig" },
+            .{ .name = "ghost_recur_discover", .root = "src/invention/recur_discover.zig" },
+        };
+        const discover_step = b.step("discover", "Build all invention/discovery tools (pure-std, beyond-XOR generate→certify→keep)");
+        for (invention_tools) |t| {
+            const exe = b.addExecutable(.{
+                .name = t.name,
+                .root_module = b.createModule(.{
+                    .root_source_file = b.path(t.root),
+                    .target = target,
+                    .optimize = optimize,
+                }),
+            });
+            const inst = b.addInstallArtifact(exe, .{});
+            discover_step.dependOn(&inst.step);
+        }
     }
 
     {
