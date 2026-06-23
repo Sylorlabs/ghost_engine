@@ -23,48 +23,14 @@ const cfg = config;
 // Runes are never "weighted." They are Ranked 1-5.
 // Training consists of "Forging" — moving patterns from Rank 5 (Noise)
 // to Rank 1 (Verified) based on success in the environment.
-pub const RuneRank = enum(u8) {
-    /// Confirmed by human or successful test. Never demoted.
-    verified = 1,
-    /// Automated verification passed (pytest, compiler, etc.)
-    validated = 2,
-    /// Seen 100+ times across 3+ distinct contexts.
-    pattern = 3,
-    /// Seen 5+ times. Under observation.
-    emerging = 4,
-    /// Seen 1 time. Auto-pruned after TTL expires.
-    noise = 5,
-
-    pub fn label(self: RuneRank) []const u8 {
-        return switch (self) {
-            .verified => "VERIFIED",
-            .validated => "VALIDATED",
-            .pattern => "PATTERN",
-            .emerging => "EMERGING",
-            .noise => "NOISE",
-        };
-    }
-
-    pub fn isQueryable(self: RuneRank) bool {
-        return @intFromEnum(self) <= @intFromEnum(RuneRank.pattern);
-    }
-
-    pub fn promotionTarget(self: RuneRank) ?RuneRank {
-        return switch (self) {
-            .noise => .emerging,
-            .emerging => .pattern,
-            .pattern => .validated,
-            .validated => .verified,
-            .verified => null,
-        };
-    }
-};
-
-// ── Rank Promotion Thresholds (sourced from config.zig) ──
-pub const RANK_EMERGING_MIN_OBSERVATIONS: u32 = cfg.V2_RANK_EMERGING_MIN_OBS;
-pub const RANK_PATTERN_MIN_OBSERVATIONS: u32 = cfg.V2_RANK_PATTERN_MIN_OBS;
-pub const RANK_PATTERN_MIN_CONTEXTS: u32 = cfg.V2_RANK_PATTERN_MIN_CTX;
-pub const RANK_NOISE_TTL_MS: u64 = cfg.V2_NOISE_TTL_MS;
+// RuneRank + the rank-ladder constants now live in the VSA-free rank.zig; triad re-exports them so existing
+// triad.RuneRank / triad.RANK_* users are unchanged, while the structured engine can depend on rank.zig directly.
+pub const rank = @import("rank.zig");
+pub const RuneRank = rank.RuneRank;
+pub const RANK_EMERGING_MIN_OBSERVATIONS = rank.RANK_EMERGING_MIN_OBSERVATIONS;
+pub const RANK_PATTERN_MIN_OBSERVATIONS = rank.RANK_PATTERN_MIN_OBSERVATIONS;
+pub const RANK_PATTERN_MIN_CONTEXTS = rank.RANK_PATTERN_MIN_CONTEXTS;
+pub const RANK_NOISE_TTL_MS = rank.RANK_NOISE_TTL_MS;
 pub const SNIPER_VARIANCE_MULTIPLIER: u32 = cfg.V2_SCOUT_VARIANCE_MULTIPLIER;
 pub const KING_DISTANCE_THRESHOLD: u16 = cfg.V2_KING_DISTANCE_TAU;
 

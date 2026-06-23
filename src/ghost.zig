@@ -94,6 +94,7 @@ pub const MAX_VERIFIER_EXECUTION_ITEMS = @import("gip_core.zig").MAX_VERIFIER_EX
 pub const wasm_loader = @import("extensions/wasm_loader.zig");
 
 // ── Ghost Engine v2: Rune-Native Triple-Core Pipeline ──
+pub const rank = @import("rank.zig");
 pub const triad = @import("triad.zig");
 pub const forge = @import("forge.zig");
 

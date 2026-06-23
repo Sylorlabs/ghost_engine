@@ -7,7 +7,7 @@
 //! explicit n-gram with a count, and similarity is an explainable cosine over shared n-grams — you can read why
 //! two items matched, unlike a 4096-bit resonance.
 const std = @import("std");
-pub const RuneRank = @import("../triad.zig").RuneRank;
+pub const RuneRank = @import("../rank.zig").RuneRank; // VSA-free rank ladder
 
 const NGRAM: usize = 3; // character trigrams: language/code-agnostic, robust to small edits
 

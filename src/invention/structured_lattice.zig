@@ -6,7 +6,7 @@
 //! Build: in the ghost_core CLI list as `ghost_structured_lattice`. Run: ./zig-out/bin/ghost_structured_lattice
 const std = @import("std");
 const fsim = @import("feature_sim.zig");
-const RuneRank = @import("../triad.zig").RuneRank;
+const RuneRank = @import("../rank.zig").RuneRank; // VSA-free rank ladder
 
 const MERGE_SIM: f64 = 0.92; // cosine above which a new observation is the SAME pattern (was: small Hamming radius)
 const EMERGING_MIN_OBS: u32 = 5; // mirrors triad's frequency ladder (noise→emerging→pattern→validated)
