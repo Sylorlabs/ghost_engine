@@ -13,7 +13,6 @@ pub const ghost_state = @import("ghost_state.zig");
 pub const vsa_vulkan = @import("vsa_vulkan.zig");
 pub const engine = @import("engine.zig");
 pub const inference = @import("inference.zig");
-pub const layer2a_gpu = @import("layer2a_gpu.zig");
 pub const panic_dump = @import("panic_dump.zig");
 pub const config = @import("config.zig");
 pub const shards = @import("shards.zig");
@@ -52,15 +51,6 @@ pub const hypothesis_core = @import("hypothesis_core.zig");
 pub const intent_grounding = @import("intent_grounding.zig");
 pub const grpe_classifier = @import("grpe_classifier.zig");
 pub const text_generation_lab = @import("text_generation_lab.zig");
-pub const gemma_config = @import("gemma/config.zig");
-pub const gemma_agents = @import("gemma/agents.zig");
-pub const gemma_context_provider = @import("gemma/context_provider.zig");
-pub const gemma_inference = @import("gemma/inference.zig");
-pub const gemma_layers = @import("gemma/layers.zig");
-pub const gemma_model = @import("gemma/model.zig");
-pub const gemma_weights = @import("gemma/weights.zig");
-pub const gemma_q8_matmul = @import("gemma/q8_matmul.zig");
-pub const gemma_rune_encoder = @import("gemma/rune_encoder.zig");
 pub const response_engine = @import("response_engine.zig");
 pub const epistemic_renderer = @import("epistemic_renderer.zig");
 pub const conversation_session = @import("conversation_session.zig");
@@ -99,7 +89,5 @@ pub const triad = @import("triad.zig");
 pub const forge = @import("forge.zig");
 
 // ── Ghost Engine v2: Semantic Lattice Test Modules ──
-pub const semantic_encoder = @import("semantic_encoder.zig");
-pub const concept_index = @import("concept_index.zig");
 
 pub const VERSION = @import("build_options").ghost_version;
