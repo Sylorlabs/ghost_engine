@@ -542,7 +542,6 @@ pub fn build(b: *std.Build) void {
         .{ .name = "ghostd", .root = "src/daemon.zig" },
         .{ .name = "ghost_project_autopsy", .root = "src/project_autopsy_cli.zig" },
         .{ .name = "ghost_forge", .root = "src/forge_cli.zig" },
-        .{ .name = "ghost_semantic_test", .root = "src/semantic_test_cli.zig" },
     };
 
     for (exes) |cfg| {

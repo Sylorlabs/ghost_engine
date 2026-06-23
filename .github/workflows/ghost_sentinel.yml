@@ -1,0 +1,77 @@
+name: Ghost Sentinel CI/CD Gatekeeper
+
+on:
+  pull_request:
+    paths:
+      - '**.zig'
+
+jobs:
+  ghost-lint:
+    name: Ghost Engine Continuous Formal Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v1
+        with:
+          version: 0.14.0
+
+      - name: Install Z3 Prover
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libz3-dev z3
+
+      - name: Compile Ghost Engine CLI
+        run: |
+          # Since the Ghost CLI pass-through has been proven standalone,
+          # we can quickly build the executable here.
+          zig build-exe src/main.zig -O ReleaseSafe -lc -lz3 -I/usr/include -L/usr/lib/x86_64-linux-gnu -femit-bin=ghost-lint
+
+      - name: Run Ghost Engine Pass-Through Sweep
+        id: sweep
+        run: |
+          echo "================================================================="
+          echo " Ghost Sentinel: Formal Verification Pass"
+          echo "================================================================="
+          
+          # Find all modified Zig files in the PR
+          ZIG_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep '\.zig$' || true)
+          
+          if [ -z "$ZIG_FILES" ]; then
+            echo "No Zig files modified. Sentinel sweep passed."
+            exit 0
+          fi
+          
+          VIOLATIONS=0
+          
+          for file in $ZIG_FILES; do
+            echo "Evaluating: $file"
+            
+            # Run the engine
+            ./ghost-lint "$file" > ghost_out.log
+            
+            # Check if any bounds, zero-div, or UAF repairs occurred
+            if grep -q "repaired: true" ghost_out.log; then
+              echo "::error file=$file::Ghost Engine proved SAT (Unsafe State). Synthesis repair generated."
+              echo "==================== SYNTHESIZED PATCH FOR $file ===================="
+              cat ghost_compiled.zig
+              echo "======================================================================="
+              VIOLATIONS=$((VIOLATIONS + 1))
+            else
+              echo "File proved UNSAT (Safe). No synthesis required."
+            fi
+            
+          done
+          
+          if [ $VIOLATIONS -gt 0 ]; then
+            echo "Ghost Sentinel detected $VIOLATIONS file(s) with vulnerabilities."
+            echo "Merge blocked. Please review the synthesized patches above."
+            exit 1
+          fi
+          
+          echo "All proofs passed. Merge permitted."

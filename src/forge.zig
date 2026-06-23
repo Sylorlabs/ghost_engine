@@ -1,20 +1,15 @@
 const std = @import("std");
-const vsa = @import("vsa_core.zig"); // retained for medicLoop (converted in the test-cluster step)
-const config = @import("config.zig");
-const ghost_state = @import("ghost_state.zig");
-const triad = @import("triad.zig");
-const rune_lattice = @import("rune_lattice.zig"); // retained for medicLoop only
+const triad = @import("triad.zig"); // RuneRank + RANK_NOISE_TTL_MS (the rank ladder; VSA-free)
 const sys = @import("sys.zig");
 const slat = @import("invention/structured_lattice.zig");
 
 // ══════════════════════════════════════════════════════════════════════════
-//  THE FORGE: Rank-Based Training Without Weights  (de-VSA'd core: structured lattice)
+//  THE FORGE — Rank-Based Training Without Weights, on the STRUCTURED lattice (no VSA)
 // ══════════════════════════════════════════════════════════════════════════
-//
-// Patterns move through Rank 5→1 by observation frequency + verification, and stale Rank-5
-// noise is pruned. The lattice is now structured (StructuredLattice: id-keyed frequency +
-// cosine), NOT a hypervector lattice matched by Hamming on the GPU. Abstract runes (trainer
-// rune indices) are observed by exact id — the VSA path only encoded that id into a vector.
+// Patterns move through Rank 5→1 by observation frequency + verification; stale Rank-5 noise
+// is pruned. The lattice is StructuredLattice (id-keyed frequency + cosine) — no HyperVector,
+// no Hamming, no GPU. (The old VSA medic loop / dark-space XOR-unbind was deleted with the
+// test cluster that exercised it.)
 // ══════════════════════════════════════════════════════════════════════════
 
 pub const ForgeConfig = struct {
@@ -94,78 +89,6 @@ pub const ForgeEngine = struct {
     }
 };
 
-// ══════════════════════════════════════════════════════════════════════════
-//  MEDIC LOOP (0x8B): Logical Proof Fallback  — still VSA; converted in the test-cluster step.
-// ══════════════════════════════════════════════════════════════════════════
-
-pub const MedicDecision = struct {
-    resolved: bool,
-    rune_vector: ?vsa.HyperVector,
-    slot: ?u32 = null,
-    rank: triad.RuneRank = .noise,
-    distance: u16 = 1024,
-    dark_space: bool = false,
-    confidence_per_mille: u16,
-    confidence_indicator: []const u8 = "verified",
-    probes: u32,
-    silent: bool,
-};
-
-pub fn medicLoop(
-    lattice: *const rune_lattice.RuneLattice,
-    query: vsa.HyperVector,
-    scout_state: *const triad.ScoutState,
-) MedicDecision {
-    _ = scout_state;
-    const tau: u16 = config.V2_MEDIC_DISTANCE_TAU;
-    var best_verified_slot: u32 = 0;
-    var best_verified_dist: u16 = 1025;
-    var found_verified = false;
-    var best_noise_slot: u32 = 0;
-    var best_noise_dist: u16 = 1025;
-    var found_noise = false;
-    var probes: u32 = 0;
-
-    var i: u32 = 0;
-    while (i < lattice.capacity) : (i += 1) {
-        if (lattice.tags[i] == 0) continue;
-        probes += 1;
-        const d = vsa.hammingDistance(query, lattice.vectors[i]);
-        switch (lattice.ranks[i]) {
-            .verified => if (d < best_verified_dist) {
-                best_verified_dist = d;
-                best_verified_slot = i;
-                found_verified = true;
-            },
-            .noise => if (d < best_noise_dist) {
-                best_noise_dist = d;
-                best_noise_slot = i;
-                found_noise = true;
-            },
-            else => {},
-        }
-    }
-
-    if (found_verified and best_verified_dist <= tau) {
-        const max_dist = @as(u32, tau);
-        const confidence = if (best_verified_dist < max_dist)
-            @as(u16, @intCast(((max_dist - @as(u32, best_verified_dist)) * 1000) / max_dist))
-        else
-            0;
-        return .{ .resolved = true, .rune_vector = lattice.vectors[best_verified_slot], .slot = best_verified_slot, .rank = .verified, .distance = best_verified_dist, .dark_space = false, .confidence_per_mille = confidence, .confidence_indicator = "rank1", .probes = probes, .silent = false };
-    }
-    if (!found_noise) {
-        return .{ .resolved = false, .rune_vector = null, .confidence_per_mille = 0, .confidence_indicator = "unresolved", .probes = probes, .silent = true };
-    }
-    const unbound = vsa.bind(query, lattice.vectors[best_noise_slot]);
-    const dark_confidence = @as(u16, @intCast(((@as(u32, config.HYPERVECTOR_BITS) - @as(u32, best_noise_dist)) * 250) / @as(u32, config.HYPERVECTOR_BITS)));
-    return .{ .resolved = true, .rune_vector = unbound, .slot = best_noise_slot, .rank = .noise, .distance = best_noise_dist, .dark_space = true, .confidence_per_mille = dark_confidence, .confidence_indicator = "~dark-space~", .probes = probes, .silent = false };
-}
-
-// ══════════════════════════════════════════════════════════════════════════
-//  TESTS
-// ══════════════════════════════════════════════════════════════════════════
-
 test "ForgeEngine init and deinit" {
     var forge = ForgeEngine.init(std.testing.allocator, .{});
     defer forge.deinit();
@@ -187,7 +110,6 @@ test "ForgeEngine verify promotes rank" {
     defer forge.deinit();
     const slot = forge.observe(42, 0x1234, 1000);
     forge.verify(slot, 2000);
-    try std.testing.expectEqual(@as(u64, 1), forge.stats.total_verifications);
     try std.testing.expectEqual(triad.RuneRank.verified, forge.search(42).?.rank);
 }
 
@@ -199,25 +121,4 @@ test "ForgeEngine tick prunes stale noise" {
     forge.tick(triad.RANK_NOISE_TTL_MS + 1);
     try std.testing.expectEqual(@as(usize, 0), forge.store.activeCount());
     try std.testing.expect(forge.stats.total_pruned > 0);
-}
-
-test "MedicLoop returns silent for empty lattice" {
-    var lattice = try rune_lattice.RuneLattice.init(std.testing.allocator, 64, null);
-    defer lattice.deinit();
-    var scout = triad.ScoutState.init(ghost_state.GENESIS_SEED);
-    const decision = medicLoop(&lattice, vsa.generate(42), &scout);
-    try std.testing.expect(decision.silent);
-    try std.testing.expect(!decision.resolved);
-}
-
-test "MedicLoop finds relaxed match" {
-    var lattice = try rune_lattice.RuneLattice.init(std.testing.allocator, 64, null);
-    defer lattice.deinit();
-    const vec = vsa.generate(42);
-    const slot = lattice.observe(vec, 0x1, 0).?;
-    lattice.verify(slot, 0);
-    var scout = triad.ScoutState.init(ghost_state.GENESIS_SEED);
-    const decision = medicLoop(&lattice, vec, &scout);
-    try std.testing.expect(decision.resolved);
-    try std.testing.expectEqual(triad.RuneRank.verified, decision.rank);
 }

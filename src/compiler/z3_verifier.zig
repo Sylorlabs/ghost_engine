@@ -177,3 +177,95 @@ fn emit(allocator: std.mem.Allocator, solver: *flame.FlameSolver, want_model: bo
 
     return out.toOwnedSlice();
 }
+
+/// Lower the decoded graph to a temporal UAF proof obligation.
+/// Extract the execution order (child port position) of Alloc, Free, and Deref.
+/// Emits SMT tracking memory state: 0=UNALLOCATED, 1=ALLOCATED, 2=FREED.
+/// Negation of safety: Deref occurs when the state is FREED.
+pub fn generateUafSafetySmt(allocator: std.mem.Allocator, solver: *flame.FlameSolver) ![]const u8 {
+    var t_alloc: i32 = -1;
+    var t_free: i32 = -1;
+    var t_deref: i32 = -1;
+    var t_reset: i32 = -1;
+    var has_guard = false;
+
+    for (0..solver.nodes.len) |i| {
+        if (!isCommitted(solver, i)) continue;
+        const link = solver.topology[i] orelse continue;
+        const c = validator.decodeNode(solver, i);
+        if (c == .alloc) t_alloc = @intCast(link.position);
+        if (c == .free) t_free = @intCast(link.position);
+        if (c == .deref) t_deref = @intCast(link.position);
+        if (c == .literal_null) t_reset = @intCast(link.position);
+        if (c == .op_not_equal) has_guard = true;
+    }
+
+    var out = std.ArrayList(u8).init(allocator);
+    errdefer out.deinit();
+    const w = out.writer();
+
+    try w.writeAll("(set-option :produce-models true)\n");
+    try w.writeAll(";; --- USE-AFTER-FREE (UAF) PROOF OBLIGATION ---\n");
+    try w.print(";; decoded execution order: t_alloc={d}, t_free={d}, t_deref={d}, t_reset={d}, has_guard={any}\n\n", .{ t_alloc, t_free, t_deref, t_reset, has_guard });
+
+    try w.print("(declare-const t_alloc Int)\n(assert (= t_alloc {d}))\n", .{t_alloc});
+    try w.print("(declare-const t_free Int)\n(assert (= t_free {d}))\n", .{t_free});
+    try w.print("(declare-const t_deref Int)\n(assert (= t_deref {d}))\n", .{t_deref});
+    try w.print("(declare-const t_reset Int)\n(assert (= t_reset {d}))\n", .{t_reset});
+    try w.print("(declare-const has_guard Bool)\n(assert (= has_guard {s}))\n\n", .{if (has_guard) "true" else "false"});
+
+    try w.writeAll(";; Temporal Memory State Tracking (0=Unallocated/Null, 1=Allocated, 2=Freed)\n");
+    try w.writeAll("(define-fun ptr_state ((t Int)) Int\n");
+    try w.writeAll("  (ite (and (>= t_reset 0) (> t t_reset)) 0\n");
+    try w.writeAll("  (ite (and (>= t_free 0) (> t t_free)) 2\n");
+    try w.writeAll("  (ite (and (>= t_alloc 0) (> t t_alloc)) 1\n");
+    try w.writeAll("  0))))\n\n");
+
+    try w.writeAll(";; Path condition: if guarded (ptr != null), deref is only reachable if state != 0\n");
+    try w.writeAll("(define-fun reachable () Bool\n");
+    try w.writeAll("  (or (not has_guard) (not (= (ptr_state t_deref) 0))))\n\n");
+
+    try w.writeAll(";; Negation of Safety: Access is reachable AND state is either FREED (2) or NULL (0)\n");
+    try w.writeAll("(assert (and reachable (or (= (ptr_state t_deref) 2) (= (ptr_state t_deref) 0))))\n\n");
+    
+    try w.writeAll("(check-sat)\n");
+    try w.writeAll("(get-value (t_alloc t_free t_deref t_reset has_guard (ptr_state t_deref) reachable))\n");
+
+    return out.toOwnedSlice();
+}
+
+/// Lower the decoded graph to a Zero-Division proof obligation.
+/// Extract the divisor operand (we'll just use a generic 'b' for the divisor).
+/// Negation of safety: Access is reachable AND divisor is ZERO.
+pub fn generateZeroDivSafetySmt(allocator: std.mem.Allocator, solver: *flame.FlameSolver) ![]const u8 {
+    var has_guard = false;
+
+    for (0..solver.nodes.len) |i| {
+        if (!isCommitted(solver, i)) continue;
+        const c = validator.decodeNode(solver, i);
+        if (c == .op_not_equal) has_guard = true;
+    }
+
+    var out = std.ArrayList(u8).init(allocator);
+    errdefer out.deinit();
+    const w = out.writer();
+
+    try w.writeAll("(set-option :produce-models true)\n");
+    try w.writeAll(";; --- ZERO-DIVISION PROOF OBLIGATION ---\n");
+    try w.print(";; decoded execution: has_guard={any}\n\n", .{has_guard});
+
+    try w.writeAll("(declare-const b Int)\n\n");
+
+    if (has_guard) {
+        try w.writeAll(";; Path condition: guarded by `if (b != 0)`\n");
+        try w.writeAll("(assert (not (= b 0)))\n\n");
+    }
+
+    try w.writeAll(";; Negation of Safety: Divisor is ZERO\n");
+    try w.writeAll("(assert (= b 0))\n\n");
+    
+    try w.writeAll("(check-sat)\n");
+    try w.writeAll("(get-value (b))\n");
+
+    return out.toOwnedSlice();
+}

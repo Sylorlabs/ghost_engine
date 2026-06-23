@@ -60,6 +60,8 @@ pub const Ast_Type_u32      = vsa.generate(0x4153545F54797032);
 pub const Ast_Type_u8_Array = vsa.generate(0x4153545F54797041);
 pub const Ast_Op_Add        = vsa.generate(0x4153545F4F704164);
 pub const Ast_Cast_u32_to_u8 = vsa.generate(0x4153545F43617374);
+pub const Ast_Op_Div        = vsa.generate(0x4153545F4F704469);
+pub const Ast_Literal_Zero  = vsa.generate(0x4153545F4C697430);
 
 // Phase 4.1: Ouroboros Concepts (FlameSolver.init MVD)
 pub const Ast_Param_Allocator = vsa.generate(0x4F55524F5F503031);
@@ -99,6 +101,15 @@ pub const Ast_Op_LessThan = vsa.generate(0x4153545F4F704C54); // AST_OpLT
 pub const Ast_Variable_idx = vsa.generate(0x4153545F56494458); // AST_VIDX
 pub const Ast_Variable_len = vsa.generate(0x4153545F564C454E); // AST_VLEN
 
+// Phase 8: Use-After-Free (UAF) Memory State Domain
+pub const Ast_Pointer     = vsa.generate(0x4153545F50545230); // AST_PTR0
+pub const Ast_Alloc       = vsa.generate(0x4153545F414C4F43); // AST_ALOC
+pub const Ast_Free        = vsa.generate(0x4153545F46524545); // AST_FREE
+pub const Ast_Deref       = vsa.generate(0x4153545F44524546); // AST_DREF
+pub const Ast_State_Freed = vsa.generate(0x4153545F53465244); // AST_SFRD
+pub const Ast_Literal_Null = vsa.generate(0x4153545F4E554C4C); // AST_NULL
+pub const Ast_Op_NotEqual  = vsa.generate(0x4153545F4F704E45); // AST_OpNE
+
 /// Helper to bind a concept to a structural port role.
 /// E.g. A child node is bound with Port_Child, breaking commutativity when bundled with a parent.
 pub fn bindRole(concept: HyperVector, port: HyperVector) HyperVector {
@@ -108,6 +119,7 @@ pub fn bindRole(concept: HyperVector, port: HyperVector) HyperVector {
 // Full domain list for cleanup memory
 pub const all_concepts = [_]HyperVector{
     Ast_FnDecl, Ast_ReturnStmt, Ast_Type_u32, Ast_Type_u8_Array, Ast_Op_Add, Ast_Cast_u32_to_u8,
+    Ast_Op_Div, Ast_Literal_Zero,
     Ast_Param_Allocator, Ast_Param_Size, Ast_Ret_FlameSolver,
     Ast_Alloc_Nodes, Ast_Alloc_RawNodes, Ast_For_Loop,
     Ast_Alloc_Pinned, Ast_Memset_Pinned,
@@ -119,13 +131,50 @@ pub const all_concepts = [_]HyperVector{
     Ast_BoundsCheck,
     // Phase 7.1: parameterized-guard atoms
     Ast_Op_LessThan, Ast_Variable_idx, Ast_Variable_len,
+    // Phase 8: Use-After-Free Domain
+    Ast_Pointer, Ast_Alloc, Ast_Free, Ast_Deref, Ast_State_Freed,
+    Ast_Literal_Null, Ast_Op_NotEqual,
 };
 
 pub var dynamic_registry: ?std.StringHashMap(HyperVector) = null;
 
+/// FNV-1a (64-bit) hash: maps a byte string to a stable u64 seed.
+fn fnv1a64(data: []const u8) u64 {
+    var h: u64 = 0xcbf29ce484222325;
+    for (data) |byte| {
+        h ^= @as(u64, byte);
+        h *%= 0x100000001b3;
+    }
+    return h;
+}
+
+/// Return the existing dynamic vector for `node_type_name`, or generate a
+/// fresh near-orthogonal 4096-bit HyperVector, register it, and return it.
+/// Idempotent: the seed is derived deterministically from the name via FNV-1a,
+/// so repeated calls with the same name always return the same vector.
+pub fn getOrCreate(allocator: std.mem.Allocator, node_type_name: []const u8) !HyperVector {
+    if (getConcept(node_type_name)) |existing| return existing;
+    const vector = vsa.generate(fnv1a64(node_type_name));
+    try registerConcept(allocator, node_type_name, vector);
+    return vector;
+}
+
 pub fn initRegistry(allocator: std.mem.Allocator) void {
     if (dynamic_registry == null) {
         dynamic_registry = std.StringHashMap(HyperVector).init(allocator);
+    }
+}
+
+/// Free all dynamically registered entries and reset the registry.
+/// Must use the same allocator passed to initRegistry / registerConcept.
+pub fn deinitRegistry(allocator: std.mem.Allocator) void {
+    if (dynamic_registry) |*reg| {
+        var it = reg.keyIterator();
+        while (it.next()) |key_ptr| {
+            allocator.free(key_ptr.*);
+        }
+        reg.deinit();
+        dynamic_registry = null;
     }
 }
 

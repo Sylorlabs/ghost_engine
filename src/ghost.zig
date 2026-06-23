@@ -101,8 +101,5 @@ pub const forge = @import("forge.zig");
 // ── Ghost Engine v2: Semantic Lattice Test Modules ──
 pub const semantic_encoder = @import("semantic_encoder.zig");
 pub const concept_index = @import("concept_index.zig");
-pub const contradiction_detector = @import("contradiction_detector.zig");
-pub const cross_domain_projector = @import("cross_domain_projector.zig");
-pub const intent_resolver = @import("intent_resolver.zig");
 
 pub const VERSION = @import("build_options").ghost_version;

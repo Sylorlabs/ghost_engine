@@ -27,7 +27,7 @@ pub const MeaningMatrix = struct {
     /// Converts 1024 32-bit accumulators into 1024 bits via thresholding.
     pub fn collapseToBinaryAtSlot(self: *const MeaningMatrix, slot: u32) HyperVector {
         const acc = self.data[slot * 1024 .. slot * 1024 + 1024];
-        var res_bytes: [128]u8 = undefined;
+        var res_bytes: [512]u8 = undefined;
 
         const threshold: @Vector(16, u32) = @splat(@as(u32, 2147483647));
         const powers: @Vector(16, u32) = .{ 1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128 };
@@ -105,7 +105,7 @@ pub const MeaningMatrix = struct {
         const sid = slot_idx orelse return .{};
 
         const acc_ptr = @as([*]u32, @ptrCast(@alignCast(&self.data[sid * 1024])));
-        const pool_bytes: [128]u8 = @bitCast(sentence_pool);
+        const pool_bytes: [512]u8 = @bitCast(sentence_pool);
 
         // Process in 512-bit chunks (16x u32) for AVX-512 or 2x 256-bit AVX-2 saturation.
         // SIMD bit extraction: use vector shift-right + AND instead of 16 scalar extractions.
@@ -185,7 +185,7 @@ pub const MeaningMatrix = struct {
             }
         }
         const sid = slot_idx orelse return;
-        const reality_bytes: [128]u8 = @bitCast(generate(@as(u64, rune)));
+        const reality_bytes: [512]u8 = @bitCast(generate(@as(u64, rune)));
         var word_acc = self.data[sid * 1024 .. sid * 1024 + 1024];
         for (0..1024) |i| {
             const bit = (reality_bytes[i / 8] >> @as(u3, @intCast(i % 8))) & 1;

@@ -30,6 +30,15 @@ pub const Concept = enum {
     op_less_than, // Phase 7.1: root of a synthesized `idx_K < len` guard
     variable_idx, // Phase 7.1: the index operand of a guard (port position = K)
     variable_len, // Phase 7.1: the length operand of a guard
+    pointer,      // Phase 8: UAF pointer handle
+    alloc,        // Phase 8: UAF alloc
+    free,         // Phase 8: UAF free
+    deref,        // Phase 8: UAF deref
+    state_freed,  // Phase 8: UAF state tag
+    literal_null, // Phase 8: UAF null check/reset
+    op_not_equal, // Phase 8: UAF guard condition
+    op_div,
+    literal_zero,
     other,
 
     pub fn isIndex(self: Concept) bool {
@@ -53,6 +62,15 @@ pub const Concept = enum {
             .op_less_than => "Ast_Op_LessThan",
             .variable_idx => "Ast_Variable_idx",
             .variable_len => "Ast_Variable_len",
+            .pointer      => "Ast_Pointer",
+            .alloc        => "Ast_Alloc",
+            .free         => "Ast_Free",
+            .deref        => "Ast_Deref",
+            .state_freed  => "Ast_State_Freed",
+            .literal_null => "Ast_Literal_Null",
+            .op_not_equal => "Ast_Op_NotEqual",
+            .op_div => "Ast_Op_Div",
+            .literal_zero => "Ast_Literal_Zero",
             .other => "(other)",
         };
     }
@@ -110,6 +128,15 @@ pub fn decode(node: vsa.HyperVector) Concept {
     if (vsa.hammingDistance(node, codebook.Ast_Op_LessThan) == 0) return .op_less_than;
     if (vsa.hammingDistance(node, codebook.Ast_Variable_idx) == 0) return .variable_idx;
     if (vsa.hammingDistance(node, codebook.Ast_Variable_len) == 0) return .variable_len;
+    if (vsa.hammingDistance(node, codebook.Ast_Pointer) == 0) return .pointer;
+    if (vsa.hammingDistance(node, codebook.Ast_Alloc) == 0) return .alloc;
+    if (vsa.hammingDistance(node, codebook.Ast_Free) == 0) return .free;
+    if (vsa.hammingDistance(node, codebook.Ast_Deref) == 0) return .deref;
+    if (vsa.hammingDistance(node, codebook.Ast_State_Freed) == 0) return .state_freed;
+    if (vsa.hammingDistance(node, codebook.Ast_Literal_Null) == 0) return .literal_null;
+    if (vsa.hammingDistance(node, codebook.Ast_Op_NotEqual) == 0) return .op_not_equal;
+    if (vsa.hammingDistance(node, codebook.Ast_Op_Div) == 0) return .op_div;
+    if (vsa.hammingDistance(node, codebook.Ast_Literal_Zero) == 0) return .literal_zero;
     return .other;
 }
 
