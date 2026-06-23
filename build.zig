@@ -525,6 +525,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "ghost_code_intel", .root = "src/code_intel_cli.zig" },
         .{ .name = "ghost_corpus_ingest", .root = "src/corpus_ingest_cli.zig" },
         .{ .name = "ghost_invent", .root = "src/invent_cli.zig" },
+        .{ .name = "ghost_rune_forge", .root = "src/invention/rune_forge.zig" },
         .{ .name = "ghost_medic_ingest", .root = "src/medic_ingest_cli.zig" },
         .{ .name = "ghost_medic_solve", .root = "src/medic_solve_cli.zig" },
         .{ .name = "ghost_patch_candidates", .root = "src/patch_candidates_cli.zig" },
@@ -625,6 +626,29 @@ pub fn build(b: *std.Build) void {
         verified_swap_step.dependOn(&run_verified_swap.step);
     }
 
+    // zag_verify: SMT-LIB2 verification bridge for the external Zag compiler. Self-contained
+    // (std + libz3 only, like verified_swap) so it builds independently of ghost_core churn.
+    // Reads an SMT-LIB2 query on stdin, prints {"verdict":...} via Z3_eval_smtlib2_string.
+    //   zig build zag-verify
+    {
+        const zag_verify = b.addExecutable(.{
+            .name = "zag_verify",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/zag_verify.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        zag_verify.root_module.linkSystemLibrary("c", .{});
+        zag_verify.root_module.linkSystemLibrary("z3", .{});
+        zag_verify.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
+        zag_verify.root_module.addSystemIncludePath(.{ .cwd_relative = "/usr/include/x86_64-linux-gnu" });
+        zag_verify.root_module.addLibraryPath(.{ .cwd_relative = "/usr/lib/x86_64-linux-gnu" });
+        const inst_zag_verify = b.addInstallArtifact(zag_verify, .{});
+        const zag_verify_step = b.step("zag-verify", "Build the SMT-LIB2 verification bridge for the Zag compiler");
+        zag_verify_step.dependOn(&inst_zag_verify.step);
+    }
+
     // ── Invention / discovery tools (moved from the boundary_crossing research lab) ──
     // Pure-std, beyond-XOR (integer ADD/MUL) generate→certify→keep loops. Self-contained like verified_swap:
     // they build and run even while ghost_core is mid-change. `zig build discover` builds them all into zig-out/bin.
@@ -655,22 +679,6 @@ pub fn build(b: *std.Build) void {
             const inst = b.addInstallArtifact(exe, .{});
             discover_step.dependOn(&inst.step);
         }
-        // beyond-XOR encoder: needs the vsa_math HyperVector type (rune-signature compatibility)
-        const bx = b.addExecutable(.{
-            .name = "ghost_beyond_xor_encode",
-            .root_module = b.createModule(.{
-                .root_source_file = b.path("src/invention/beyond_xor_encode.zig"),
-                .target = target,
-                .optimize = optimize,
-            }),
-        });
-        bx.root_module.addImport("vsa_math", b.createModule(.{
-            .root_source_file = b.path("src/vsa_math.zig"),
-            .target = target,
-            .optimize = optimize,
-        }));
-        const bx_inst = b.addInstallArtifact(bx, .{});
-        discover_step.dependOn(&bx_inst.step);
     }
 
     {
@@ -827,6 +835,22 @@ pub fn build(b: *std.Build) void {
         b.installArtifact(phase12);
         const phase12_step = b.step("phase12-evaluator", "Build Phase 12 LLM-CEGIS evaluator binary (JSON stdin/stdout)");
         phase12_step.dependOn(&b.addInstallArtifact(phase12, .{}).step);
+    }
+
+    // ── Phase 13: Neurosymbolic C-ABI Bridge ──
+    {
+        const ghost_c_api = b.addSharedLibrary(.{
+            .name = "ghost",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/compiler/ghost_c_api.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        ghost_c_api.root_module.linkSystemLibrary("c", .{});
+        b.installArtifact(ghost_c_api);
+        const bridge_step = b.step("phase13-bridge", "Build Phase 13 Neurosymbolic C-ABI shared library");
+        bridge_step.dependOn(&b.addInstallArtifact(ghost_c_api, .{}).step);
     }
 
     // ── Phase 2.0: V2 bootstrap — dynamic codebook + SyGuS axiom discovery + Z3 integration proof ──
