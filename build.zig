@@ -519,9 +519,6 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(monolith);
 
     const exes = [_]ExeConfig{
-        .{ .name = "ohl_trainer", .root = "src/trainer.zig" },
-        .{ .name = "probe_inference", .root = "src/probe_inference.zig" },
-        .{ .name = "sigil_core", .root = "src/sigil_core.zig" },
         .{ .name = "ghost_code_intel", .root = "src/code_intel_cli.zig" },
         .{ .name = "ghost_corpus_ingest", .root = "src/corpus_ingest_cli.zig" },
         .{ .name = "ghost_invent", .root = "src/invent_cli.zig" },
@@ -535,13 +532,8 @@ pub fn build(b: *std.Build) void {
         .{ .name = "ghost_intent_grounding", .root = "src/intent_grounding_cli.zig" },
         .{ .name = "ghost_knowledge_pack", .root = "src/knowledge_packs.zig" },
         .{ .name = "ghost_gip", .root = "src/gip_cli.zig" },
-        .{ .name = "ghost_gemma", .root = "src/gemma_cli.zig" },
         .{ .name = "ghost_swe_harness", .root = "src/swe_harness_cli.zig" },
-        .{ .name = "sigil", .root = "src/ui/sigil.zig" },
-        .{ .name = "lattice_view", .root = "src/ui/lattice_view.zig" },
-        .{ .name = "ghostd", .root = "src/daemon.zig" },
         .{ .name = "ghost_project_autopsy", .root = "src/project_autopsy_cli.zig" },
-        .{ .name = "ghost_forge", .root = "src/forge_cli.zig" },
     };
 
     for (exes) |cfg| {
