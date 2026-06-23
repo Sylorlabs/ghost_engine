@@ -577,23 +577,22 @@ pub fn build(b: *std.Build) void {
         }
     }
 
-    // [invention-engine branch] zenith_wingman_bridge disabled: src/zenith/{bridge,wingman}.zig are not present
-    // in tracked history at this commit, so installing it breaks the default build. Re-enable once those land.
-    // const zenith_bridge_lib = b.addLibrary(.{
-    //     .name = "zenith_wingman_bridge",
-    //     .linkage = .dynamic,
-    //     .use_llvm = use_llvm,
-    //     .root_module = b.createModule(.{
-    //         .root_source_file = b.path("src/zenith/bridge.zig"),
-    //         .target = target,
-    //         .optimize = .ReleaseFast,
-    //         .code_model = .small,
-    //         .strip = true,
-    //         .omit_frame_pointer = true,
-    //     }),
-    // });
-    // zenith_bridge_lib.want_lto = use_llvm != false;
-    // b.installArtifact(zenith_bridge_lib);
+    // [invention-engine branch] src/zenith/{bridge,wingman}.zig recovered from b97703a3 (deleted in WIP fe09d0ff).
+    const zenith_bridge_lib = b.addLibrary(.{
+        .name = "zenith_wingman_bridge",
+        .linkage = .dynamic,
+        .use_llvm = use_llvm,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/zenith/bridge.zig"),
+            .target = target,
+            .optimize = .ReleaseFast,
+            .code_model = .small,
+            .strip = true,
+            .omit_frame_pointer = true,
+        }),
+    });
+    zenith_bridge_lib.want_lto = use_llvm != false;
+    b.installArtifact(zenith_bridge_lib);
 
     // ── 8. Run Step ──
     const run_cmd = b.addRunArtifact(monolith);
