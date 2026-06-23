@@ -656,6 +656,22 @@ pub fn build(b: *std.Build) void {
             const inst = b.addInstallArtifact(exe, .{});
             discover_step.dependOn(&inst.step);
         }
+        // beyond-XOR encoder: needs the vsa_math HyperVector type (rune-signature compatibility)
+        const bx = b.addExecutable(.{
+            .name = "ghost_beyond_xor_encode",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/invention/beyond_xor_encode.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        bx.root_module.addImport("vsa_math", b.createModule(.{
+            .root_source_file = b.path("src/vsa_math.zig"),
+            .target = target,
+            .optimize = optimize,
+        }));
+        const bx_inst = b.addInstallArtifact(bx, .{});
+        discover_step.dependOn(&bx_inst.step);
     }
 
     {
