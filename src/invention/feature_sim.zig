@@ -12,8 +12,8 @@ pub const RuneRank = @import("ghost_core").triad.RuneRank;
 const NGRAM: usize = 3; // character trigrams: language/code-agnostic, robust to small edits
 
 pub const FeatureSet = struct {
-    keys: []u64, // sorted distinct n-gram hashes
-    counts: []u32, // parallel counts
+    keys: []const u64, // sorted distinct n-gram hashes
+    counts: []const u32, // parallel counts
     norm: f64, // sqrt(sum count^2) for cosine
     a: std.mem.Allocator,
 
@@ -30,8 +30,8 @@ pub const FeatureSet = struct {
             }
         }
         const n = map.count();
-        var keys = a.alloc(u64, n) catch &[_]u64{};
-        var counts = a.alloc(u32, n) catch &[_]u32{};
+        const keys = a.alloc(u64, n) catch return .{ .keys = &[_]u64{}, .counts = &[_]u32{}, .norm = 0, .a = a };
+        const counts = a.alloc(u32, n) catch return .{ .keys = &[_]u64{}, .counts = &[_]u32{}, .norm = 0, .a = a };
         var it = map.iterator();
         var idx: usize = 0;
         while (it.next()) |kv| : (idx += 1) {
