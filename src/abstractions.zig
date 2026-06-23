@@ -4980,7 +4980,7 @@ const ReuseBuilder = struct {
 };
 
 fn parseVectorLine(text: []const u8) !vsa.HyperVector {
-    var lanes = [_]u64{0} ** 16;
+    var lanes = [_]u64{0} ** 64; // 4096-bit HyperVector (64 lanes)
     var parts = std.mem.splitScalar(u8, text, ',');
     var idx: usize = 0;
     while (parts.next()) |part| {
@@ -4988,7 +4988,8 @@ fn parseVectorLine(text: []const u8) !vsa.HyperVector {
         lanes[idx] = try std.fmt.parseUnsigned(u64, part, 16);
         idx += 1;
     }
-    if (idx != lanes.len) return error.InvalidAbstractionCatalog;
+    // accept full 64-lane (4096-bit) entries, or legacy 16-lane (1024-bit) catalogs zero-extended into the low lanes
+    if (idx != 64 and idx != 16) return error.InvalidAbstractionCatalog;
     return lanes;
 }
 

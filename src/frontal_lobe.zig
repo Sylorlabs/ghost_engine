@@ -223,7 +223,10 @@ fn confidencePerMille(route: IntentRoute, scores: IntentScores) u16 {
 }
 
 fn toMmapVector(vector: vsa.HyperVector) mmap_hv.HyperVector {
-    return .{ .lanes = @as([16]u64, vector) };
+    // working vector is 4096-bit (64 lanes); mmap persistence is 1024-bit (16 lanes), so store the primary
+    // 16 lanes (4096-bit migration: project at the mmap serialization boundary).
+    const full: [64]u64 = vector;
+    return .{ .lanes = full[0..16].* };
 }
 
 // Helpers removed. Using pure VSA resonance.

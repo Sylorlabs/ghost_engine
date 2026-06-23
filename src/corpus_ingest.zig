@@ -2008,13 +2008,13 @@ fn addVectorVotes(votes: *[1024]i32, vector: vsa.HyperVector) void {
 }
 
 fn collapseVotes(votes: *const [1024]i32) vsa.HyperVector {
-    var lanes = [_]u64{0} ** 16;
+    var lanes = [_]u64{0} ** 64; // 4096-bit HyperVector; the 1024 votes fill the low 16 data lanes
     var idx: usize = 0;
     while (idx < 1024) : (idx += 1) {
         if (votes[idx] >= 0) lanes[idx / 64] |= (@as(u64, 1) << @as(u6, @intCast(idx % 64)));
     }
     var result: vsa.HyperVector = lanes;
-    result[15] = vsa.generateParity(result);
+    result[vsa.PARITY_LANE] = vsa.generateParity(result); // was result[15] — stale 1024-bit parity-lane convention
     return result;
 }
 

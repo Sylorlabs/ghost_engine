@@ -58,7 +58,7 @@ const Options = struct {
 };
 
 const ProjectionResult = struct {
-    vector_id: [16]u64,
+    vector_id: @Vector(64, u64), // 4096-bit HyperVector (was [16]u64 / 1024-bit)
     blueprint_smt: []u8,
     blueprint_algebra: []u8,
     verification_status: []const u8,

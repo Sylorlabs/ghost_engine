@@ -305,7 +305,10 @@ pub const GreedyBatcher = struct {
         stream.context_rotor = vsa.bundle(vsa.rotate(stream.context_rotor, 1), vsa.generate(rune), vsa.generate(stream.lexical_rotor));
 
         const base = total_packed.* * 18;
-        const rotor_words: [16]u64 = @bitCast(stream.context_rotor);
+        // context_rotor is the 4096-bit working vector; the GPU rotor buffer is stride-18 (1024-bit spine),
+        // so serialize its primary 16 lanes (4096-bit migration: project at the GPU serialization boundary).
+        const rotor_full: [64]u64 = stream.context_rotor;
+        const rotor_words: [16]u64 = rotor_full[0..16].*;
         inline for (0..16) |j| {
             out_rotors[base + j] = rotor_words[j];
         }
@@ -512,7 +515,10 @@ fn findMeaningSlot(tags: []u64, spatial_sig: u32, uniform_hash: u64, collision_s
 fn etchMeaningSlot(meaning: *vsa.MeaningMatrix, slot_idx: u32, target_char: u32) void {
     const base_idx = slot_idx * 1024;
     const concept = vsa.generate(target_char);
-    const bytes: [128]u8 = @bitCast(concept);
+    // concept is the 4096-bit working vector; a MeaningMatrix slot is 1024 accumulators, so etch the primary
+    // 1024 bits (4096-bit migration: project at the meaning-slot boundary, matching collapseToBinaryAtSlot).
+    const concept_full: [512]u8 = @bitCast(concept);
+    const bytes: [128]u8 = concept_full[0..128].*;
 
     for (0..1024) |bit_index| {
         const bit = (bytes[bit_index / 8] >> @as(u3, @intCast(bit_index % 8))) & 1;
