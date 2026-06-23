@@ -1207,7 +1207,7 @@ pub const OhlTrainer = struct {
                     const frune = chars[fi];
                     const fbase = fi * 18;
                     const ctx_hash = ghost_state.wyhash(rotors[fbase + 16], rotors[fbase + 17]);
-                    _ = forge_engine.observe(vsa.generate(frune), ctx_hash, now_ms);
+                    _ = forge_engine.observe(@as(u64, frune), ctx_hash, now_ms); // [GPU-PATH / dead-guarded] structured id-keyed observe
                 }
             }
         }

@@ -6,8 +6,7 @@
 //! Build: in the ghost_core CLI list as `ghost_structured_lattice`. Run: ./zig-out/bin/ghost_structured_lattice
 const std = @import("std");
 const fsim = @import("feature_sim.zig");
-const ghost = @import("ghost_core");
-const RuneRank = ghost.triad.RuneRank;
+const RuneRank = @import("../triad.zig").RuneRank;
 
 const MERGE_SIM: f64 = 0.92; // cosine above which a new observation is the SAME pattern (was: small Hamming radius)
 const EMERGING_MIN_OBS: u32 = 5; // mirrors triad's frequency ladder (noise→emerging→pattern→validated)
@@ -90,6 +89,37 @@ pub const StructuredLattice = struct {
             if (best == null or sim > best.?.similarity) best = .{ .slot = i, .id = s.id, .similarity = sim, .rank = s.rank, .label = s.label };
         }
         return best;
+    }
+
+    /// observe by EXACT id (abstract runes that have no text — e.g. trainer's rune indices): frequency-promote
+    /// the matching slot, else allocate a new `noise` slot keyed by id. This is the id-keyed counterpart of
+    /// observe(text) — the VSA path encoded the id into a hypervector; here the id IS the key.
+    pub fn observeKey(self: *StructuredLattice, id: u64, context_hash: u64, now_ms: u64) usize {
+        for (self.slots.items, 0..) |*s, i| {
+            if (s.id == id) {
+                s.observations += 1;
+                s.contexts.put(context_hash, {}) catch {};
+                s.last_seen_ms = now_ms;
+                autoPromote(s);
+                return i;
+            }
+        }
+        const slot = self.slots.items.len;
+        var ctx = std.AutoHashMap(u64, void).init(self.a);
+        ctx.put(context_hash, {}) catch {};
+        self.slots.append(.{ .id = id, .features = fsim.FeatureSet.fromText(self.a, ""), .rank = .noise, .observations = 1, .contexts = ctx, .last_seen_ms = now_ms, .label = "" }) catch return slot;
+        return slot;
+    }
+    /// exact lookup by id (the id-keyed counterpart of search) — returns the slot if present at/above min_rank.
+    pub fn searchKey(self: *const StructuredLattice, id: u64, min_rank: RuneRank) ?Hit {
+        for (self.slots.items, 0..) |*s, i| {
+            if (s.id == id and @intFromEnum(s.rank) <= @intFromEnum(min_rank))
+                return .{ .slot = i, .id = id, .similarity = 1.0, .rank = s.rank, .label = s.label };
+        }
+        return null;
+    }
+    pub fn activeCount(self: *const StructuredLattice) usize {
+        return self.slots.items.len;
     }
 
     pub fn verify(self: *StructuredLattice, slot: usize) void {

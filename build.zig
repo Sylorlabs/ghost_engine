@@ -526,7 +526,6 @@ pub fn build(b: *std.Build) void {
         .{ .name = "ghost_corpus_ingest", .root = "src/corpus_ingest_cli.zig" },
         .{ .name = "ghost_invent", .root = "src/invent_cli.zig" },
         .{ .name = "ghost_rune_forge", .root = "src/invention/rune_forge.zig" },
-        .{ .name = "ghost_structured_lattice", .root = "src/invention/structured_lattice.zig" },
         .{ .name = "ghost_medic_ingest", .root = "src/medic_ingest_cli.zig" },
         .{ .name = "ghost_medic_solve", .root = "src/medic_solve_cli.zig" },
         .{ .name = "ghost_patch_candidates", .root = "src/patch_candidates_cli.zig" },

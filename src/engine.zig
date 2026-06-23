@@ -321,7 +321,7 @@ pub const SingularityEngine = struct {
         if (self.forge) |forge_engine| {
             const context_hash = ghost_state.wyhash(self.soul.lexical_rotor, self.soul.semantic_rotor);
             const now_ms = @as(u64, @intCast(sys.getMilliTick()));
-            _ = forge_engine.observe(chosen_vec, context_hash, now_ms);
+            _ = forge_engine.observe(@as(u64, chosen), context_hash, now_ms); // [GPU-PATH / dead-guarded] structured id-keyed observe
             self.triad_byte_offset += len_fin;
         }
 
