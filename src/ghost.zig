@@ -95,7 +95,6 @@ pub const wasm_loader = @import("extensions/wasm_loader.zig");
 
 // ── Ghost Engine v2: Rune-Native Triple-Core Pipeline ──
 pub const triad = @import("triad.zig");
-pub const rune_lattice = @import("rune_lattice.zig");
 pub const forge = @import("forge.zig");
 
 // ── Ghost Engine v2: Semantic Lattice Test Modules ──
