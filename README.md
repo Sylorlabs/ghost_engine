@@ -59,7 +59,8 @@ $ ./zig-out/bin/ghost_rune_forge
 - `ghost_double_discover` — multivariable double sums (reflection/symmetry identities).
 - `ghost_recur_discover` — order-1/2 recurrences → polynomial/geometric closed form, else abstain.
 - `ghost_labs_search` — a genuinely-open target (Low-Autocorrelation Binary Sequences); certifies artifacts, no records claimed.
-- `ghost_prove_divisor` — **from check to proof**: PROVES the divisor identities for an *infinite* class (all `n` with prime exponents ≤ K) via multiplicative reduction → prime powers → polynomial identity, and disproves false ones with an exhibited counterexample.
+- `ghost_prove_divisor` — **from check to proof**: PROVES the divisor identities for all `n` (no bound) via multiplicative reduction + telescoping/convolution recurrences, and disproves false ones with an exhibited counterexample.
+- `ghost_prove_search` — discover **and** prove over a richer 12-function basis (`1,ε,id,id²,μ,φ,σ,σ₂,τ,λ,J₂,ψ`): enumerates Dirichlet convolutions, matches each to a basis function, and auto-proves `∀n`. Found + proved 26 classical identities (e.g. `Σφ(d)τ(n/d)=σ(n)`, `Σμ(d)σ₂(n/d)=n²`, `Σλ(d)ψ(n/d)=n`); flags convolutions that fall outside the basis as the frontier.
 
 ## Research direction: from check to proof
 
