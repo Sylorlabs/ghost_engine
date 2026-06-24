@@ -76,25 +76,52 @@ pub fn build(b: *std.Build) void {
         b.installArtifact(exe);
     }
 
-    // Tests — the structured engine. ghost.zig pulls rank/config/sys/forge (→structured_lattice
-    // →feature_sim); exact_lattice links ghost_core.
+    // Tests — compile EVERY source file and run the assertion suites. The headline certified
+    // results are asserted directly (Fermat in discover_laws; Gauss/Möbius/σ in divisor_discover),
+    // so a regression in a certified identity fails CI.
     const test_step = b.step("test", "Run the structured-engine test suite");
-    {
+
+    // Targets that import ghost_core.
+    const core_tests = [_][]const u8{
+        "src/invention/exact_lattice.zig",
+        "src/invention/rune_forge.zig",
+        "src/medic_ingest_cli.zig",
+        "src/medic_solve_cli.zig",
+    };
+    for (core_tests) |root| {
         const t = b.addTest(.{ .root_module = b.createModule(.{
-            .root_source_file = b.path("src/ghost.zig"),
-            .target = target,
-            .optimize = optimize,
-        }) });
-        t.root_module.addOptions("build_options", opts);
-        test_step.dependOn(&b.addRunArtifact(t).step);
-    }
-    {
-        const t = b.addTest(.{ .root_module = b.createModule(.{
-            .root_source_file = b.path("src/invention/exact_lattice.zig"),
+            .root_source_file = b.path(root),
             .target = target,
             .optimize = optimize,
         }) });
         t.root_module.addImport("ghost_core", ghost_core);
+        test_step.dependOn(&b.addRunArtifact(t).step);
+    }
+
+    // Standalone targets (build_options for the few that reach config via rank; harmless elsewhere).
+    const standalone_tests = [_][]const u8{
+        "src/ghost.zig",
+        "src/forge.zig",
+        "src/invention/structured_lattice.zig",
+        "src/invention/feature_sim.zig",
+        "src/invention/discover_laws.zig",
+        "src/invention/feature_invent.zig",
+        "src/invention/invent_sensors.zig",
+        "src/invention/invent_compound.zig",
+        "src/invention/labs_search.zig",
+        "src/invention/discover_closedform.zig",
+        "src/invention/auto_discover.zig",
+        "src/invention/divisor_discover.zig",
+        "src/invention/double_discover.zig",
+        "src/invention/recur_discover.zig",
+    };
+    for (standalone_tests) |root| {
+        const t = b.addTest(.{ .root_module = b.createModule(.{
+            .root_source_file = b.path(root),
+            .target = target,
+            .optimize = optimize,
+        }) });
+        t.root_module.addOptions("build_options", opts);
         test_step.dependOn(&b.addRunArtifact(t).step);
     }
 }

@@ -5,7 +5,7 @@ answers. It invents mathematical facts from primitives and keeps only the ones a
 computational verifier** certifies — `generate → test → keep`, the FunSearch/AlphaEvolve shape,
 done with exact arithmetic instead of a learned model.
 
-Runs in **seconds**, in **megabytes**, on a **single CPU core**. Whole engine is 23 source files.
+Runs in **seconds**, in **megabytes**, on a **single CPU core**. Whole engine is 20 source files (pure std — no libc).
 
 > **History.** This repo previously hosted a VSA/LLM/GPU engine (Z3 static analyzer + a Vector
 > Symbolic Architecture "Oracle" + a native Gemma stack + an agentic platform). That was removed

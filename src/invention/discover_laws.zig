@@ -248,3 +248,17 @@ pub fn main() !void {
     try o.print("  • {d} candidates were KILLED by a single counterexample — the certifier discipline that text\n    verification (~5%%) could never enforce. Computation is a SOUND verifier; text is not.\n", .{refuted});
     try o.print("  • The cross-domain survivors were never told to it: e.g. \"d(n) odd ⟺ perfect square\" is Fermat's\n    divisor-pairing theorem; \"divisible by 3 ⟺ digit-sum divisible by 3\" is the classic rule — both DISCOVERED\n    by generate-and-verify over the integers, not retrieved from any text.\n", .{});
 }
+
+test "Fermat rune holds: perfect square ⟺ divisor count odd, over [1,1000]" {
+    var n: u64 = 1;
+    while (n <= 1000) : (n += 1) {
+        try std.testing.expectEqual(p_square(n), p_dOdd(n));
+    }
+}
+
+test "discover_laws primitives (exact)" {
+    try std.testing.expectEqual(@as(u64, 4), divisorCount(6));
+    try std.testing.expectEqual(@as(u64, 12), sigma(6));
+    try std.testing.expectEqual(@as(u64, 3), isqrt(9));
+    try std.testing.expectEqual(@as(u64, 6), digitSum(123));
+}

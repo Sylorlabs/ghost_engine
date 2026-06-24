@@ -1,6 +1,5 @@
 const std = @import("std");
 const rank = @import("rank.zig"); // RuneRank + RANK_NOISE_TTL_MS — VSA-free, no triad/vsa pull
-const sys = @import("sys.zig");
 const slat = @import("invention/structured_lattice.zig");
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -57,13 +56,13 @@ pub const ForgeEngine = struct {
         _ = now_ms;
         self.store.verify(slot);
         self.stats.total_verifications += 1;
-        if (self.forge_config.log_promotions) sys.print("[FORGE] Slot {d} verified to Rank 1\n", .{slot});
+        if (self.forge_config.log_promotions) std.debug.print("[FORGE] Slot {d} verified to Rank 1\n", .{slot});
     }
     pub fn validateSlot(self: *ForgeEngine, slot: usize, now_ms: u64) void {
         _ = now_ms;
         self.store.validate(slot);
         self.stats.total_validations += 1;
-        if (self.forge_config.log_promotions) sys.print("[FORGE] Slot {d} validated to Rank 2\n", .{slot});
+        if (self.forge_config.log_promotions) std.debug.print("[FORGE] Slot {d} validated to Rank 2\n", .{slot});
     }
 
     /// Periodic maintenance: prune stale Rank-5 noise.
@@ -72,7 +71,7 @@ pub const ForgeEngine = struct {
             const dropped = self.store.prune(now_ms, rank.RANK_NOISE_TTL_MS);
             self.stats.total_pruned += dropped;
             self.stats.last_prune_ms = now_ms;
-            if (self.forge_config.log_prunes and dropped > 0) sys.print("[FORGE] Pruned {d} stale Noise runes\n", .{dropped});
+            if (self.forge_config.log_prunes and dropped > 0) std.debug.print("[FORGE] Pruned {d} stale Noise runes\n", .{dropped});
         }
         self.stats.rank_distribution = self.store.rankDistribution();
     }

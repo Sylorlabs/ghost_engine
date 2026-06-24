@@ -221,3 +221,32 @@ pub fn main() !void {
     try o.print("    the Mobius sum (sum_{{d|n}} mu(d) = [n==1]), Mobius inversion (sum_{{d|n}} mu(d)·(n/d) = phi(n)).\n", .{});
     try o.print("  These are real Dirichlet-convolution identities — posed from primitives and proven by computation.\n", .{});
 }
+
+test "divisor primitives (exact)" {
+    try std.testing.expectEqual(@as(i64, 4), dcount(6)); // 1,2,3,6
+    try std.testing.expectEqual(@as(i64, 12), sigma(6)); // 1+2+3+6
+    try std.testing.expectEqual(@as(i64, 2), phi(6)); // 1,5
+    try std.testing.expectEqual(@as(i64, 1), mu(6)); // 2·3 squarefree, 2 primes → (-1)^2
+    try std.testing.expectEqual(@as(i64, -1), mu(2));
+    try std.testing.expectEqual(@as(i64, 0), mu(4)); // 2^2 squareful → 0
+}
+
+test "the certified divisor-sum runes hold over [1,300]" {
+    var n: i64 = 1;
+    while (n <= 300) : (n += 1) {
+        var sphi: i64 = 0;
+        var sd: i64 = 0;
+        var smu: i64 = 0;
+        var d: i64 = 1;
+        while (d <= n) : (d += 1) {
+            if (@rem(n, d) == 0) {
+                sphi += phi(d);
+                sd += d;
+                smu += mu(d);
+            }
+        }
+        try std.testing.expectEqual(n, sphi); // Gauss:  Σ_{d|n} φ(d) = n
+        try std.testing.expectEqual(sigma(n), sd); //       Σ_{d|n} d    = σ(n)
+        try std.testing.expectEqual(@as(i64, if (n == 1) 1 else 0), smu); // Σ_{d|n} μ(d) = [n==1]
+    }
+}
