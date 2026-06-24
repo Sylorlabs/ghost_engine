@@ -5,7 +5,7 @@ answers. It invents mathematical facts from primitives and keeps only the ones a
 computational verifier** certifies — `generate → test → keep`, the FunSearch/AlphaEvolve shape,
 done with exact arithmetic instead of a learned model.
 
-Runs in **seconds**, in **megabytes**, on a **single CPU core**. Whole engine is 20 source files (pure std — no libc).
+Runs in **seconds**, in **megabytes**, on a **single CPU core**. Whole engine is 21 source files (pure std — no libc).
 
 > **History.** This repo previously hosted a VSA/LLM/GPU engine (Z3 static analyzer + a Vector
 > Symbolic Architecture "Oracle" + a native Gemma stack + an agentic platform). That was removed
@@ -59,13 +59,23 @@ $ ./zig-out/bin/ghost_rune_forge
 - `ghost_double_discover` — multivariable double sums (reflection/symmetry identities).
 - `ghost_recur_discover` — order-1/2 recurrences → polynomial/geometric closed form, else abstain.
 - `ghost_labs_search` — a genuinely-open target (Low-Autocorrelation Binary Sequences); certifies artifacts, no records claimed.
+- `ghost_prove_divisor` — **from check to proof**: PROVES the divisor identities for an *infinite* class (all `n` with prime exponents ≤ K) via multiplicative reduction → prime powers → polynomial identity, and disproves false ones with an exhibited counterexample.
+
+## Research direction: from check to proof
+
+Discovery tools *certify* over a finite range (strong empirical, not a proof). The active research
+push is to elevate `verified` to **proven ∀n**. First result (`ghost_prove_divisor`): for the
+number-theoretic core, an identity between multiplicative functions reduces to prime powers, and at
+each prime power both sides are polynomials in `p` — so agreement at `2k+2` primes is a *proof for
+all p*, not a sample. Gauss/Möbius/σ are now proven for all `n` with bounded prime exponents. Next:
+symbolic induction on the exponent `k` to drop the bound entirely.
 
 ## Build & run
 
 Requires only Zig (0.14+). No libc, no Z3, no Vulkan, no system packages.
 
 ```bash
-zig build            # builds all 13 tools into zig-out/bin/
+zig build            # builds all 14 tools into zig-out/bin/
 zig build test       # runs the structured-engine test suite
 ./zig-out/bin/ghost_divisor_discover
 ```

@@ -75,6 +75,18 @@ or `noise` when refuted by counterexample (e.g. `Σ_{d|n} d == n` is refuted at 
 | `double_discover` | multivariable double sums | reflection/symmetry identities |
 | `recur_discover` | order-1/2 recurrences | polynomial/geometric closed forms, else abstain |
 | `labs_search` | open problem (LABS merit factor) | certified artifacts; no records claimed |
+| `prove_divisor` | the divisor identities, **proven** | from *check* to *proof*: multiplicative reduction → prime powers → polynomial identity at `2k+2` primes ⟹ proven `∀n` with prime exponents ≤ K (infinite class); false identities disproven by counterexample |
+
+## Active direction: from check to proof
+
+The discovery tools *certify* over a finite range — a strong empirical certificate, not a proof.
+`prove_divisor` is the first step in elevating `verified` to **proven `∀n`**. For multiplicative
+arithmetic functions the chain is sound and decidable: (1) both sides multiplicative (structural,
+from the multiplicative basis); (2) multiplicative ⇒ determined by prime powers, so `∀n` reduces to
+`∀ p^k`; (3) at fixed `k` both sides are polynomials in `p` of degree ≤ 2k, so agreement at `2k+2`
+distinct primes is a polynomial identity — a proof for **all** `p`. Result: Gauss/Möbius/σ proven
+for all `n` with bounded prime exponents. The honest remaining gap is the bound on `k`; closing it
+needs symbolic induction on the exponent (Gosper/Zeilberger-style summation) — the next step.
 
 ## Tests
 
