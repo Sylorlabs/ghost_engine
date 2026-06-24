@@ -1,118 +1,80 @@
-# Ghost Engine
+# Ghost — Structured/Exact Invention Engine
 
-An autonomous, formally-verified static analyzer and repair tool for Zig.
+A small, CPU-only machine-**discovery** engine. No LLM, no GPU, no neural net, no hardcoded
+answers. It invents mathematical facts from primitives and keeps only the ones a **sound
+computational verifier** certifies — `generate → test → keep`, the FunSearch/AlphaEvolve shape,
+done with exact arithmetic instead of a learned model.
 
-Ghost Engine is an industrial-grade developer tool that goes beyond traditional linting. Instead of simply reporting bugs, it formally proves their existence using Satisfiability Modulo Theories (SMT), synthesizes a mathematical repair, re-proves the corrected logic, and emits the safe code—all completely autonomously.
+Runs in **seconds**, in **megabytes**, on a **single CPU core**. Whole engine is 23 source files.
 
-## Hybrid Architecture
-
-Ghost Engine is built on a "Hybrid Architecture" that combines the deterministic proof capabilities of the Z3 SMT solver with the geometric pattern-matching of a Vector Symbolic Architecture (VSA).
-
-### 1. The Pass-Through Parser
-Traditional static analyzers often fail when encountering complex metaprogramming, inline assembly, or SIMD vector mathematics. Ghost Engine uses a **Pass-Through Parser** that gracefully ignores syntax it does not understand. It surgically extracts only the standard Zig control-flow and memory operations it recognizes, maps them to its internal structural representation, and passes everything else through unharmed. This guarantees that deploying Ghost Engine on a complex, 5,000-line file will not arbitrarily corrupt or drop advanced compiler macros.
-
-### 2. Formal Verification (Z3)
-When Ghost Engine identifies a potential vulnerability, it does not rely on heuristics. The engine lowers the execution path into an SMT-LIB time-series and queries the Z3 Prover. 
-
-Ghost Engine currently sweeps for three major vulnerability classes concurrently:
-- **Array Bounds Manipulation** (Out-of-bounds indexing)
-- **Arithmetic Safety** (Division by zero)
-- **Temporal Memory Safety** (Use-After-Free and Null-Dereferences)
-
-If Z3 returns `UNSAT` (Unsatisfiable), the code is mathematically proven to be safe. If it returns `SAT` (Satisfiable), a vulnerability has been verified.
-
-### 3. VSA Synthesis (The Oracle)
-Upon a `SAT` verdict, Ghost Engine engages the Oracle—a high-dimensional Vector Symbolic Architecture (VSA). The VSA combinatorially searches its Concept Codebook for structural repairs (e.g., control-flow guards, state nullification) and injects them into the failing topological path.
-
-The engine then re-submits the patched AST to Z3. Only when Z3 returns a guaranteed `UNSAT` verdict will the engine procedurally emit the finalized, safe code back into your file.
-
-### 4. The CI/CD Sentinel
-Ghost Engine is designed to act as an automated gatekeeper for production repositories. By integrating the engine into GitHub Actions, it serves as a CI/CD Sentinel. 
-
-When a Pull Request is opened, the Sentinel intercepts modified files and runs a concurrent vulnerability sweep. If an unsafe state (`SAT`) is detected, the pipeline automatically fails, blocking the merge. Crucially, the Sentinel doesn't just block the PR; it outputs the fully synthesized, `UNSAT`-verified code patch directly into the CI logs for the developer to apply.
+> **History.** This repo previously hosted a VSA/LLM/GPU engine (Z3 static analyzer + a Vector
+> Symbolic Architecture "Oracle" + a native Gemma stack + an agentic platform). That was removed
+> in the *invention-engine transition* — the structured/exact architecture replaced it. The full
+> old engine is preserved and recoverable on origin at branch **`backup/vsa-llm-gpu-engine`**.
 
 ---
 
-## Capabilities & Examples
+## What it does
 
-Ghost Engine does not alter your formatting or destroy your complex logic. It simply injects the necessary guards and state resets to achieve mathematical safety.
+Each tool enumerates candidate facts over a bounded grammar, **certifies each by exact computation**
+over a finite range, refutes the rest **by explicit counterexample**, and abstains honestly when it
+can't decide. Nothing is retrieved or looked up — the programs it proves were never written down.
 
-### 1. Bounds Safety Validation
+```
+$ zig build && ./zig-out/bin/ghost_discover_laws
+generated 231 equivalence candidates · refuted 224 by counterexample · 41 laws survived
+    n is a perfect square  ⟺  d(n) is odd            (Fermat)
+    sigma(n) is odd        ⟺  n is square or twice a square
 
-**Before (Vulnerable):**
-```zig
-pub fn bounds_vulnerable(a: *[4]u32, i: u32, j: u32) void {
-    const tmp = a[i];
-    a[i] = a[j];
-    a[j] = tmp;
-}
+$ ./zig-out/bin/ghost_rune_forge
+    etch [VERIFIED ] sum_{d|n} phi(d) == n        (certified over [1,4000])   (Gauss)
+    etch [VERIFIED ] sum_{d|n} mu(d)  == [n==1]   (certified over [1,4000])   (Möbius)
+    etch [NOISE    ] sum_{d|n} d == n             (REFUTED: counterexample n=2)
 ```
 
-**After (Repaired):**
-```zig
-pub fn bounds_vulnerable(a: *[4]u32, i: u32, j: u32) void {
-    if (i >= a.len) return; // SYNTHESIZED: Bounds Guard
-    if (j >= a.len) return; // SYNTHESIZED: Bounds Guard
-    const tmp = a[i];
-    a[i] = a[j];
-    a[j] = tmp;
-}
-```
+## Architecture (VSA-free)
 
-### 2. Arithmetic Safety Validation
+| Layer | File(s) | Role |
+|-------|---------|------|
+| **Rank ladder** | `rank.zig` | epistemic promotion `noise → emerging → pattern → validated → verified`; `verified` never demoted. The keystone — extracted out of the old VSA `triad`, depends on nothing but `config`. |
+| **Structured lattice** | `invention/structured_lattice.zig`, `invention/feature_sim.zig` | id-keyed frequency promotion + char-trigram cosine similarity (replaces the old hypervector rune lattice — no Hamming, no XOR). |
+| **Exact lattice** | `invention/exact_lattice.zig` | certified-knowledge store: identity = exact canonical form (content-addressed, O(1) equality match, not fuzzy), riding the rank ladder. |
+| **Forge** | `forge.zig` | rank-based training store over the structured lattice (no weights, no vectors). |
+| **Core** | `ghost.zig`, `config.zig`, `sys.zig` | lean `ghost_core` module the tools link against. |
 
-**Before (Vulnerable):**
-```zig
-pub fn zero_div_vulnerable(a: u32, b: u32) u32 {
-    return a / b;
-}
-```
+## The tools
 
-**After (Repaired):**
-```zig
-pub fn zero_div_vulnerable(a: u32, b: u32) u32 {
-    if (b == 0) return 0; // SYNTHESIZED: Zero-Div Guard
-    return a / b;
-}
-```
+**Certified-knowledge (link `ghost_core`):**
+- `ghost_rune_forge` — forge discoveries into certified runes on the exact lattice (etch/lock/prune/shard).
+- `ghost_medic_ingest` / `ghost_medic_solve` — structured diagnostic runes + a generate→verify→keep self-heal loop.
 
-### 3. Temporal Memory Safety (Use-After-Free)
+**Standalone discovery (pure `std`):**
+- `ghost_discover_laws` — pairwise laws over integer features; rediscovers Fermat, digit-sum ÷3/÷9, σ-parity.
+- `ghost_feature_invent` — invents the *vocabulary*: feature-programs deduped by behavior (→ discovered identities).
+- `ghost_invent_sensors` — invents the *sensors* (`d(n)`, `σ(n)`, `isqrt`) from arithmetic + a loop-fold.
+- `ghost_invent_compound` — compounding: facts unlocked only by round-2 compound features (e.g. Fermat).
+- `ghost_closedform` — closed forms for iterative sequences via finite differences (Faulhaber, Nicomachus) + honest abstention.
+- `ghost_auto_discover` — points the generator at its own program space; surfaces proven identities between different loops.
+- `ghost_divisor_discover` — Dirichlet/divisor sums: Gauss `Σφ(d)=n`, Möbius inversion, `Σd=σ(n)`.
+- `ghost_double_discover` — multivariable double sums (reflection/symmetry identities).
+- `ghost_recur_discover` — order-1/2 recurrences → polynomial/geometric closed form, else abstain.
+- `ghost_labs_search` — a genuinely-open target (Low-Autocorrelation Binary Sequences); certifies artifacts, no records claimed.
 
-**Before (Vulnerable):**
-```zig
-pub fn uaf_vulnerable() void {
-    var ptr = alloc();
-    free(ptr);
-    deref(ptr);
-}
-```
+## Build & run
 
-**After (Repaired):**
-```zig
-pub fn uaf_vulnerable() void {
-    var ptr = alloc();
-    free(ptr);
-    ptr = null; // SYNTHESIZED: State Reset
-    if (ptr != null) { // SYNTHESIZED: Control Guard
-        deref(ptr);
-    }
-}
-```
+Requires only Zig (0.14+). No libc, no Z3, no Vulkan, no system packages.
 
----
-
-## Installation & Usage
-
-Ghost Engine requires Zig and the Z3 Prover.
-
-### Building the CLI (`ghost-lint`)
 ```bash
-sudo apt-get install libz3-dev z3
-zig build-exe src/main.zig -O ReleaseSafe -lc -lz3 -I/usr/include -L/usr/lib/x86_64-linux-gnu -femit-bin=ghost-lint
+zig build            # builds all 13 tools into zig-out/bin/
+zig build test       # runs the structured-engine test suite
+./zig-out/bin/ghost_divisor_discover
 ```
 
-### Running the Sweeper
-```bash
-./ghost-lint src/my_file.zig
-```
-If vulnerabilities are found, the safe AST will be written to `ghost_compiled.zig`.
+## Honest bounds
+
+This is a real **component** of inductive discovery, not general intelligence. The grammars are
+bounded, the sound verifier is *handed* to the engine (not invented by it), and the scale is small.
+What it does that a lookup system cannot: it generates programs nobody wrote and proves them by
+computation, refuting the rest by counterexample. Certifications are finite-range (e.g. `[1,4000]`),
+i.e. strong empirical certificates, not general proofs — cross-checked independently in Python for
+the headline results. It measures; it doesn't argue.
