@@ -65,6 +65,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "ghost_recur_discover", .root = "src/invention/recur_discover.zig" },
         .{ .name = "ghost_prove_divisor", .root = "src/invention/prove_divisor.zig" },
         .{ .name = "ghost_prove_search", .root = "src/invention/prove_search.zig" },
+        .{ .name = "ghost_prove_export", .root = "src/invention/prove_export.zig" },
     };
     for (discover_tools) |c| {
         const exe = b.addExecutable(.{
@@ -118,6 +119,7 @@ pub fn build(b: *std.Build) void {
         "src/invention/recur_discover.zig",
         "src/invention/prove_divisor.zig",
         "src/invention/prove_search.zig",
+        "src/invention/prove_export.zig",
     };
     for (standalone_tests) |root| {
         const t = b.addTest(.{ .root_module = b.createModule(.{

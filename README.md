@@ -61,6 +61,7 @@ $ ./zig-out/bin/ghost_rune_forge
 - `ghost_labs_search` — a genuinely-open target (Low-Autocorrelation Binary Sequences); certifies artifacts, no records claimed.
 - `ghost_prove_divisor` — **from check to proof**: PROVES the divisor identities for all `n` (no bound) via multiplicative reduction + telescoping/convolution recurrences, and disproves false ones with an exhibited counterexample.
 - `ghost_prove_search` — discover **and** prove over a richer 12-function basis (`1,ε,id,id²,μ,φ,σ,σ₂,τ,λ,J₂,ψ`): enumerates Dirichlet convolutions, matches each to a basis function, and auto-proves `∀n`. Found + proved 26 classical identities (e.g. `Σφ(d)τ(n/d)=σ(n)`, `Σμ(d)σ₂(n/d)=n²`, `Σλ(d)ψ(n/d)=n`); flags convolutions that fall outside the basis as the frontier.
+- `ghost_prove_export` — **proof tactics + Lean export**: emits *auditable proof certificates* (the discovered recurrence + base cases + multiplicativity reduction, independently re-checked over `[1,256]`) so a proof is inspectable, not a black box; and writes `ghost_proofs.lean`, whose bounded instances Lean's kernel re-verifies by computation (`native_decide`) — a check that doesn't trust this engine at all.
 
 ## Research direction: from check to proof
 
