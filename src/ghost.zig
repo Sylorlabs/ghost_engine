@@ -7,4 +7,5 @@
 pub const rank = @import("rank.zig"); // RuneRank ladder (VSA-free)
 pub const config = @import("config.zig"); // tuning constants (VSA-free)
 pub const sys = @import("sys.zig"); // print/io helpers (VSA-free)
+pub const forge = @import("forge.zig"); // structured rank-lattice training store (VSA-free)
 pub const VERSION = @import("build_options").ghost_version;
