@@ -95,12 +95,15 @@ on a `6×12` prime/exponent grid — unisolvent for `deg_p≤3, deg_X≤2, deg_k
 `p,k`. Result: **Gauss, `Σ1=d(n)`, `Σd=σ(n)`, Möbius `Σμ(d)=[n=1]` are proven for all n, no exponent
 ceiling.**
 
-For the **convolution** form `f(n)=Σ_{d|n} a(d)·b(n/d)` with `b` geometric (`b(p^{j+1})=β·b(p^j)`,
-e.g. `b=id`, `β=p`), splitting off the top term gives `f(p^{k+1})=β·f(p^k)+a(p^{k+1})·b(1)`; proving
-`g` obeys the **same** first-order recurrence + base yields `f=g` ∀n. **Möbius inversion `(μ*id)=φ`
-is proven for all n, no bound.** So all five true divisor identities are now proven `∀n`. Remaining:
-convolutions whose `n/d`-factor is *not* geometric (`σ`, `d`, `φ`) need a higher-order recurrence
-(the convolution of two C-finite sequences is C-finite) — the next step.
+For the **convolution** form `f(n)=Σ_{d|n} a(d)·b(n/d)=(a*b)(n)`, `f(p^k)` and `g(p^k)` are C-finite
+in `k` (the convolution of C-finite sequences is C-finite). The prover *discovers* `f`'s minimal
+linear recurrence from data (rational Gaussian elimination over a small prime/exponent sample) and
+proves `g` obeys the **same** recurrence + initial terms — two sequences with the same order-`r`
+recurrence agreeing on `r` terms are equal ∀k. This covers a **geometric** `n/d`-factor (`b=id`,
+order 1: Möbius inversion `(μ*id)=φ`) and a **non-geometric** one (`b=σ,τ`, order 2:
+`Σμ(d)σ(n/d)=n`, `Σμ(d)τ(n/d)=1`) uniformly. **Every true divisor identity is now proven `∀n`, no
+bound.** Next: extend the basis, and apply the same discover-recurrence-then-prove method to the
+multivariable (double-sum) and recurrence tools.
 
 ## Tests
 

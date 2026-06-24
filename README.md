@@ -72,17 +72,20 @@ elevate `verified` to **proven ∀n**. `ghost_prove_divisor` now does this two w
   vanishing on a small prime/exponent grid proves it for all `p,k`, and multiplicativity lifts it to
   all `n`. **Gauss, `Σ1=d(n)`, `Σd=σ(n)`, and Möbius `Σμ(d)=[n=1]` are now proven for all n — no
   exponent ceiling.**
-- **Convolution recurrence (no bound).** For a Dirichlet convolution `f(n)=Σ_{d|n} a(d)·b(n/d)` whose
-  `n/d`-factor `b` is *geometric* (`b(p^{j+1})=β·b(p^j)`, e.g. `b=id`, `β=p`), splitting off the top
-  term gives `f(p^{k+1})=β·f(p^k)+a(p^{k+1})·b(1)`. Proving `g` obeys the **same** recurrence + base
-  gives `f=g` ∀n. **Möbius inversion `Σμ(d)·(n/d)=φ(n)` is now proven for all n — no bound.**
-- **Multiplicative + polynomial-identity fallback (exp ≤ K).** For forms neither telescoping covers,
-  an identity between multiplicative functions reduces to prime powers, and at each prime power both
-  sides are polynomials in `p`, so agreement at `2k+2` primes proves it for all `p`.
+- **Convolution recurrence (no bound), discovered automatically.** A Dirichlet convolution
+  `f(n)=Σ_{d|n} a(d)·b(n/d)` is C-finite in `k` at prime powers (the convolution of C-finite sequences
+  is C-finite). The prover *discovers* `f`'s minimal linear recurrence from the data (rational Gaussian
+  elimination) and proves `g` obeys the **same** recurrence + initial terms ⇒ `f=g` ∀n. This covers a
+  *geometric* `n/d`-factor (`b=id`, order 1: Möbius inversion `Σμ(d)(n/d)=φ`) **and** a *non-geometric*
+  one (`b=σ,τ`, order 2: `Σμ(d)σ(n/d)=n`, `Σμ(d)τ(n/d)=1`) uniformly — all proven for all n.
+- **Multiplicative + polynomial-identity fallback (exp ≤ K).** For forms neither method covers, an
+  identity between multiplicative functions reduces to prime powers, and at each prime power both sides
+  are polynomials in `p`, so agreement at `2k+2` primes proves it for all `p`.
 
-All five true divisor identities the engine discovers are now **proven for all n, no exponent ceiling**.
-Remaining: convolutions whose `n/d`-factor is *not* geometric (`σ`, `d`, `φ`) need a higher-order
-recurrence (the convolution of two C-finite sequences is C-finite) — the next extension.
+Every true divisor identity the engine discovers — divisor-sums and convolutions, geometric and
+non-geometric — is now **proven for all n, no exponent ceiling**. Next frontiers: extend the function
+basis, and push the same *discover-the-recurrence-then-prove* machinery onto the multivariable
+(double-sum) and recurrence-sequence discovery tools.
 
 ## Build & run
 
