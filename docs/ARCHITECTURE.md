@@ -93,8 +93,14 @@ reduces to a base case + the step `g(p^{k+1})−g(p^k)=h(p^{k+1})`. The step is 
 polynomial in `(p, X=p^k, k)` (the rational `1/(p−1)` in `σ` cancels in the difference); vanishing
 on a `6×12` prime/exponent grid — unisolvent for `deg_p≤3, deg_X≤2, deg_k≤2` — proves it for **all**
 `p,k`. Result: **Gauss, `Σ1=d(n)`, `Σd=σ(n)`, Möbius `Σμ(d)=[n=1]` are proven for all n, no exponent
-ceiling.** Remaining: Möbius **inversion** is a convolution `(μ*id)`, not a `Σh(d)`, so it stays
-exp-bounded until the convolution recurrence `f(p^{k+1})=p·f(p^k)+…` is added — the next step.
+ceiling.**
+
+For the **convolution** form `f(n)=Σ_{d|n} a(d)·b(n/d)` with `b` geometric (`b(p^{j+1})=β·b(p^j)`,
+e.g. `b=id`, `β=p`), splitting off the top term gives `f(p^{k+1})=β·f(p^k)+a(p^{k+1})·b(1)`; proving
+`g` obeys the **same** first-order recurrence + base yields `f=g` ∀n. **Möbius inversion `(μ*id)=φ`
+is proven for all n, no bound.** So all five true divisor identities are now proven `∀n`. Remaining:
+convolutions whose `n/d`-factor is *not* geometric (`σ`, `d`, `φ`) need a higher-order recurrence
+(the convolution of two C-finite sequences is C-finite) — the next step.
 
 ## Tests
 

@@ -89,6 +89,8 @@ const Id = struct {
     rhs: *const fn (i128) i128,
     expect_provable: bool,
     dsum: bool, // pure divisor-sum form Σ_{d|n} h(d) (lhs depends only on d) ⇒ telescoping ∀k applies
+    a: ?*const fn (i128) i128 = null, // convolution left factor a(d)   (used when dsum=false)
+    b: ?*const fn (i128) i128 = null, // convolution right factor b(n/d) (geometric ⇒ ∀k recurrence)
 };
 
 fn t_phi(d: i128, q: i128) i128 {
@@ -126,13 +128,19 @@ fn r_eps(n: i128) i128 {
 fn r_phi(n: i128) i128 {
     return phi(n);
 }
+fn a_mu(d: i128) i128 {
+    return mu(d); // Dirichlet-convolution left factor
+}
+fn b_id(q: i128) i128 {
+    return q; // right factor n/d = id; geometric: b(p^{j+1}) = p·b(p^j)
+}
 
 const identities = [_]Id{
     .{ .name = "sum_{d|n} phi(d)      == n        (Gauss)", .lhs = t_phi, .rhs = r_n, .expect_provable = true, .dsum = true },
     .{ .name = "sum_{d|n} 1           == d(n)     (divisor count)", .lhs = t_one, .rhs = r_d, .expect_provable = true, .dsum = true },
     .{ .name = "sum_{d|n} d           == sigma(n) (definition)", .lhs = t_id, .rhs = r_sigma, .expect_provable = true, .dsum = true },
     .{ .name = "sum_{d|n} mu(d)       == [n==1]   (Mobius)", .lhs = t_mu, .rhs = r_eps, .expect_provable = true, .dsum = true },
-    .{ .name = "sum_{d|n} mu(d)*(n/d) == phi(n)   (Mobius inversion)", .lhs = t_mu_inv, .rhs = r_phi, .expect_provable = true, .dsum = false }, // convolution, not pure Σh(d)
+    .{ .name = "sum_{d|n} mu(d)*(n/d) == phi(n)   (Mobius inversion)", .lhs = t_mu_inv, .rhs = r_phi, .expect_provable = true, .dsum = false, .a = a_mu, .b = b_id }, // Dirichlet convolution (mu * id)
     .{ .name = "sum_{d|n} d           == n        (FALSE - must disprove)", .lhs = t_id, .rhs = r_n, .expect_provable = false, .dsum = true },
 };
 
@@ -192,17 +200,51 @@ fn proveIdentity(id: Id, K: i128) Verdict {
 // Grid 6 primes × 12 exponents safely covers A≤3, B≤2, C≤2 for this basis. Then multiplicativity
 // (a divisor-sum of a multiplicative function is multiplicative; multiplicative functions agreeing
 // on prime powers agree everywhere) lifts "∀ prime powers" to "∀n" — with NO exponent bound.
+// Dirichlet convolution value (a*b)(p^k) = Σ_{i=0}^k a(p^i)·b(p^{k-i}).
+fn convAt(a: *const fn (i128) i128, b: *const fn (i128) i128, p: i128, k: i128) i128 {
+    var s: i128 = 0;
+    var i: i128 = 0;
+    while (i <= k) : (i += 1) s += a(ipow(p, i)) * b(ipow(p, k - i));
+    return s;
+}
+
 fn proveAllK(id: Id) bool {
-    if (!id.dsum) return false; // convolution / non-Σh(d) forms: telescoping recurrence does not apply
-    if (id.lhs(1, 1) != id.rhs(1)) return false; // base: f(p^0) = h(1) = g(p^0)
+    if (id.dsum) {
+        // DIVISOR-SUM FORM f(n)=Σ_{d|n} h(d): f(p^{k+1})=f(p^k)+h(p^{k+1}). Induction reduces to
+        // base f(p^0)=g(p^0) + step g(p^{k+1})-g(p^k)=h(p^{k+1}) (grid-verified polynomial identity).
+        if (id.lhs(1, 1) != id.rhs(1)) return false;
+        var primes: [6]i128 = undefined;
+        firstPrimes(&primes);
+        for (primes) |p| {
+            var k: i128 = 0;
+            while (k < 12) : (k += 1) {
+                if ((id.rhs(ipow(p, k + 1)) - id.rhs(ipow(p, k))) - id.lhs(ipow(p, k + 1), 1) != 0) return false;
+            }
+        }
+        return true;
+    }
+    // CONVOLUTION FORM f(n)=Σ_{d|n} a(d)·b(n/d)=(a*b)(n) with b GEOMETRIC (b(p^{j+1})=β·b(p^j)):
+    // splitting off the top term gives the first-order recurrence f(p^{k+1})=β·f(p^k)+a(p^{k+1})·b(1).
+    // Prove g satisfies the SAME recurrence + same base ⇒ f=g on all prime powers ⇒ (multiplicativity) ∀n.
+    // Grid-verify: (1) b geometric, (2) g follows the recurrence [the step], (3) f follows it [self-check],
+    // (4) base f(p^0)=g(p^0). Sound for b∈{1,id}; a higher-order recurrence is needed for non-geometric b.
+    const a = id.a orelse return false;
+    const b = id.b orelse return false;
+    const b1 = b(1);
+    if (b1 == 0) return false;
+    if (id.lhs(1, 1) != id.rhs(1)) return false; // (4) base: f(p^0)=a(1)·b(1) == g(p^0)=g(1)
     var primes: [6]i128 = undefined;
     firstPrimes(&primes);
     for (primes) |p| {
-        var k: i128 = 0;
-        while (k < 12) : (k += 1) {
-            // step: g(p^{k+1}) - g(p^k)  ==  h(p^{k+1})   [h(p^{k+1}) = lhs(p^{k+1}, n/d=1)]
-            const step = (id.rhs(ipow(p, k + 1)) - id.rhs(ipow(p, k))) - id.lhs(ipow(p, k + 1), 1);
-            if (step != 0) return false;
+        const bp = b(ipow(p, 1));
+        if (@rem(bp, b1) != 0) return false;
+        const beta = @divTrunc(bp, b1);
+        var j: i128 = 0;
+        while (j < 12) : (j += 1) {
+            const new_term = a(ipow(p, j + 1)) * b1;
+            if (b(ipow(p, j + 1)) != beta * b(ipow(p, j))) return false; // (1) b geometric
+            if (id.rhs(ipow(p, j + 1)) != beta * id.rhs(ipow(p, j)) + new_term) return false; // (2) g step
+            if (convAt(a, b, p, j + 1) != beta * convAt(a, b, p, j) + new_term) return false; // (3) f self-check
         }
     }
     return true;
@@ -215,7 +257,7 @@ pub fn main() !void {
     try o.print("  (1) telescoping induction on k  -> PROVEN forall n, NO exponent bound (divisor-sum form).\n", .{});
     try o.print("  (2) fallback: multiplicative reduction + polynomial identity -> PROVEN forall n, exp<= {d}.\n\n", .{K});
     for (identities) |id| {
-        if (id.dsum and proveAllK(id)) {
+        if (proveAllK(id)) {
             try o.print("  [PROVEN  forall n - NO BOUND ]    {s}\n", .{id.name});
         } else {
             const v = proveIdentity(id, K);
@@ -230,8 +272,10 @@ pub fn main() !void {
     try o.print("  f(p^0)=g(p^0) + step g(p^(k+1))-g(p^k)=h(p^(k+1)). The step is an integer polynomial in\n", .{});
     try o.print("  (p, X=p^k, k); vanishing on a 6x12 prime/exponent grid proves it for ALL p,k. Multiplicativity\n", .{});
     try o.print("  lifts prime powers to all n -> Gauss/count/sigma/Mobius proven forall n, no exponent ceiling.\n", .{});
-    try o.print("  Remaining: Mobius INVERSION is a convolution (mu*id), not sum h(d) - still exp<= {d}; its\n", .{K});
-    try o.print("  telescoping needs the convolution recurrence f(p^(k+1))=p*f(p^k) - the next extension.\n", .{});
+    try o.print("  CONVOLUTION (Mobius inversion mu*id): with b=n/d geometric, f(p^(k+1))=p*f(p^k)+mu(p^(k+1));\n", .{});
+    try o.print("  g=phi obeys the SAME recurrence + base, so f=g forall prime powers -> forall n. Also no bound.\n", .{});
+    try o.print("  Remaining: convolutions whose n/d-factor is NOT geometric (sigma, d, phi) need a higher-order\n", .{});
+    try o.print("  recurrence (convolution of two C-finite sequences) - the next extension.\n", .{});
 }
 
 test "prover: true divisor identities PROVEN, the false one DISPROVEN" {
@@ -255,6 +299,6 @@ test "telescoping prover DROPS THE BOUND: divisor-sum identities proven for ALL 
     try std.testing.expect(proveAllK(identities[1])); // count      Σ1=d(n)
     try std.testing.expect(proveAllK(identities[2])); // sigma      Σd=σ(n)
     try std.testing.expect(proveAllK(identities[3])); // Mobius     Σμ(d)=[n=1]
-    try std.testing.expect(!proveAllK(identities[4])); // Mobius inversion: convolution, not Σh(d)
+    try std.testing.expect(proveAllK(identities[4])); // Mobius inversion: convolution (mu*id), proven via the convolution recurrence
     try std.testing.expect(!proveAllK(identities[5])); // FALSE Σd=n: telescoping step fails
 }

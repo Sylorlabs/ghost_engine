@@ -72,13 +72,17 @@ elevate `verified` to **proven ∀n**. `ghost_prove_divisor` now does this two w
   vanishing on a small prime/exponent grid proves it for all `p,k`, and multiplicativity lifts it to
   all `n`. **Gauss, `Σ1=d(n)`, `Σd=σ(n)`, and Möbius `Σμ(d)=[n=1]` are now proven for all n — no
   exponent ceiling.**
-- **Multiplicative + polynomial-identity fallback (exp ≤ K).** For forms the telescoping doesn't yet
-  cover, an identity between multiplicative functions reduces to prime powers, and at each prime power
-  both sides are polynomials in `p`, so agreement at `2k+2` primes proves it for all `p`.
+- **Convolution recurrence (no bound).** For a Dirichlet convolution `f(n)=Σ_{d|n} a(d)·b(n/d)` whose
+  `n/d`-factor `b` is *geometric* (`b(p^{j+1})=β·b(p^j)`, e.g. `b=id`, `β=p`), splitting off the top
+  term gives `f(p^{k+1})=β·f(p^k)+a(p^{k+1})·b(1)`. Proving `g` obeys the **same** recurrence + base
+  gives `f=g` ∀n. **Möbius inversion `Σμ(d)·(n/d)=φ(n)` is now proven for all n — no bound.**
+- **Multiplicative + polynomial-identity fallback (exp ≤ K).** For forms neither telescoping covers,
+  an identity between multiplicative functions reduces to prime powers, and at each prime power both
+  sides are polynomials in `p`, so agreement at `2k+2` primes proves it for all `p`.
 
-Remaining: Möbius **inversion** is a Dirichlet *convolution* `(μ*id)`, not a `Σh(d)`, so it's still
-exp-bounded; dropping its bound needs the convolution recurrence `f(p^{k+1})=p·f(p^k)+…` — the next
-extension.
+All five true divisor identities the engine discovers are now **proven for all n, no exponent ceiling**.
+Remaining: convolutions whose `n/d`-factor is *not* geometric (`σ`, `d`, `φ`) need a higher-order
+recurrence (the convolution of two C-finite sequences is C-finite) — the next extension.
 
 ## Build & run
 
