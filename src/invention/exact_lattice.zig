@@ -1,13 +1,13 @@
 //! exact_lattice.zig — the rune lattice + sigil surface made EXACT. The VSA organs swapped out:
 //!   identity   : content-addressed exact canonical form  (was: 4096-bit HyperVector)
 //!   match      : structural EQUALITY, O(1) by content id  (was: Hamming resonance / nearest-neighbour)
-//!   promotion  : the SOUND verifier on the triad.RuneRank ladder (was: observation-frequency counting)
+//!   promotion  : the SOUND verifier on the rank.RuneRank ladder (was: observation-frequency counting)
 //!   sigil ops  : scan / lock / etch over exact runes      (was: bind/etch over a MeaningMatrix HyperVector)
 //! No HyperVector, no Hamming, no XOR bind anywhere — the framework's bones (rank ladder, shards, sigil verbs)
 //! kept, running on the substrate its proof gates were always reaching for.
 const std = @import("std");
 const ghost = @import("ghost_core");
-pub const RuneRank = ghost.triad.RuneRank; // reuse the existing ladder (verified=1 best … noise=5)
+pub const RuneRank = ghost.rank.RuneRank; // VSA-free rank ladder
 
 pub const Rune = struct {
     canonical: []const u8, // the exact statement — this IS the identity

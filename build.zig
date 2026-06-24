@@ -522,13 +522,8 @@ pub fn build(b: *std.Build) void {
         .{ .name = "ghost_rune_forge", .root = "src/invention/rune_forge.zig" },
         .{ .name = "ghost_medic_ingest", .root = "src/medic_ingest_cli.zig" },
         .{ .name = "ghost_medic_solve", .root = "src/medic_solve_cli.zig" },
-        .{ .name = "ghost_panic_dump", .root = "src/panic_dump_cli.zig" },
-        .{ .name = "ghost_task_intent", .root = "src/task_intent_cli.zig" },
-        .{ .name = "ghost_task_operator", .root = "src/task_operator_cli.zig" },
-        .{ .name = "ghost_intent_grounding", .root = "src/intent_grounding_cli.zig" },
         .{ .name = "ghost_knowledge_pack", .root = "src/knowledge_packs.zig" },
         .{ .name = "ghost_swe_harness", .root = "src/swe_harness_cli.zig" },
-        .{ .name = "ghost_project_autopsy", .root = "src/project_autopsy_cli.zig" },
     };
 
     for (exes) |cfg| {

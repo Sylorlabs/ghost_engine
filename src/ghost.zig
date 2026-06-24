@@ -1,72 +1,10 @@
-pub const sys = @import("sys.zig");
-pub const reality_oracle = @import("oracle/compiler_loop.zig");
-pub const oracle_auto_fix = @import("oracle/auto_fix.zig");
-pub const curiosity = @import("ghost/curiosity.zig");
-pub const hive = @import("net/hive.zig");
-pub const recursive_boot = @import("ghost/recursive_boot.zig");
-pub const ipc_protocol = @import("ipc/protocol.zig");
-pub const ghost_state = @import("ghost_state.zig");
-pub const panic_dump = @import("panic_dump.zig");
-pub const config = @import("config.zig");
-pub const shards = @import("shards.zig");
-pub const scratchpad = @import("scratchpad.zig");
-pub const sync = @import("sync.zig");
-pub const code_intel = @import("code_intel.zig");
-pub const cpp_ast = @import("ghost_code_intel/cpp_ast.zig");
-pub const axioms = @import("ghost_code_intel/axioms.zig");
-pub const static_eval = @import("ghost_code_intel/static_eval.zig");
-pub const rule_reasoning = @import("rule_reasoning.zig");
-pub const external_evidence = @import("external_evidence.zig");
-pub const execution = @import("execution.zig");
-pub const feedback = @import("feedback.zig");
-pub const operator_workflow = @import("operator_workflow.zig");
-pub const patch_candidates = @import("patch_candidates.zig");
-pub const technical_drafts = @import("technical_drafts.zig");
-pub const task_intent = @import("task_intent.zig");
-pub const task_sessions = @import("task_sessions.zig");
-pub const knowledge_pack_store = @import("knowledge_pack_store.zig");
-pub const knowledge_packs = @import("knowledge_packs.zig");
-pub const compute_budget = @import("compute_budget.zig");
-pub const support_routing = @import("support_routing.zig");
-pub const artifact_schema = @import("artifact_schema.zig");
-pub const hypothesis_core = @import("hypothesis_core.zig");
-pub const intent_grounding = @import("intent_grounding.zig");
-pub const grpe_classifier = @import("grpe_classifier.zig");
-pub const response_engine = @import("response_engine.zig");
-pub const epistemic_renderer = @import("epistemic_renderer.zig");
-pub const conversation_session = @import("conversation_session.zig");
-pub const verifier_adapter = @import("verifier_adapter.zig");
-pub const verifier_candidates = @import("verifier_candidates.zig");
-pub const verifier_execution = @import("verifier_execution.zig");
-pub const verifier_candidate_execution = @import("verifier_candidate_execution.zig");
-pub const correction_hooks = @import("correction_hooks.zig");
-pub const correction_candidates = @import("correction_candidates.zig");
-pub const correction_review = @import("correction_review.zig");
-pub const negative_knowledge = @import("negative_knowledge.zig");
-pub const negative_knowledge_ledger = @import("runtime/ledger.zig");
-pub const runtime_session = @import("runtime/session.zig");
-pub const sovereign_inquiry = @import("sovereign_inquiry.zig");
-pub const negative_knowledge_review = @import("negative_knowledge_review.zig");
-pub const learning_store = @import("learning_store.zig");
-pub const learning_status = @import("learning_status.zig");
-pub const learning_loop = @import("learning_loop.zig");
-pub const procedure_pack_candidates = @import("procedure_pack_candidates.zig");
-pub const repo_hygiene = @import("repo_hygiene.zig");
-pub const project_autopsy = @import("project_autopsy.zig");
-pub const context_autopsy = @import("context_autopsy.zig");
-pub const context_autopsy_engine = @import("context_autopsy_engine.zig");
-pub const context_artifacts = @import("context_artifacts.zig");
-pub const context_inputs = @import("context_inputs.zig");
-pub const ProtocolStatus = @import("gip_core.zig").ProtocolStatus;
-pub const MAX_ARTIFACT_READ_BYTES = @import("gip_core.zig").MAX_ARTIFACT_READ_BYTES;
-pub const MAX_VERIFIER_EXECUTION_ITEMS = @import("gip_core.zig").MAX_VERIFIER_EXECUTION_ITEMS;
-pub const wasm_loader = @import("extensions/wasm_loader.zig");
-
-// ── Ghost Engine v2: Rune-Native Triple-Core Pipeline ──
-pub const rank = @import("rank.zig");
-pub const triad = @import("triad.zig");
-pub const forge = @import("forge.zig");
-
-// ── Ghost Engine v2: Semantic Lattice Test Modules ──
-
+//! ghost_core — LEAN structured-engine core.
+//!
+//! The VSA/LLM/GPU engine (vsa_*, gemma, the GPU stack, the agentic platform) was removed in the
+//! invention-engine transition; it is preserved on origin at branch `backup/vsa-llm-gpu-engine`,
+//! fully recoverable. What remains here is the VSA-free substrate the structured/exact invention
+//! engine stands on: the rank ladder + a couple of leaf utilities. No HyperVector, no XOR, no GPU.
+pub const rank = @import("rank.zig"); // RuneRank ladder (VSA-free)
+pub const config = @import("config.zig"); // tuning constants (VSA-free)
+pub const sys = @import("sys.zig"); // print/io helpers (VSA-free)
 pub const VERSION = @import("build_options").ghost_version;
