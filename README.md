@@ -40,7 +40,7 @@ $ ./zig-out/bin/ghost_rune_forge
 | **Structured lattice** | `invention/structured_lattice.zig`, `invention/feature_sim.zig` | id-keyed frequency promotion + char-trigram cosine similarity (replaces the old hypervector rune lattice — no Hamming, no XOR). |
 | **Exact lattice** | `invention/exact_lattice.zig` | certified-knowledge store: identity = exact canonical form (content-addressed, O(1) equality match, not fuzzy), riding the rank ladder. |
 | **Forge** | `forge.zig` | rank-based training store over the structured lattice (no weights, no vectors). |
-| **Core** | `ghost.zig`, `config.zig`, `sys.zig` | lean `ghost_core` module the tools link against. |
+| **Core** | `ghost.zig`, `config.zig` | lean `ghost_core` module the tools link against (std-only). |
 
 ## The tools
 

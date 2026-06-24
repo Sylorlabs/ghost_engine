@@ -24,8 +24,7 @@ verifier must be *sound* and *outside the symbols it judges*. Text isn't; arithm
 ghost.zig (ghost_core)
 ├── rank.zig        RuneRank ladder (noise→emerging→pattern→validated→verified); verified never demoted
 │   └── config.zig  tuning constants (reads build_options: test_mode/project_root/platform_subdir)
-├── sys.zig         print/io helpers → sys/{linux,windows}.zig
-└── forge.zig       rank-based training store (no weights)
+└── forge.zig       rank-based training store (no weights; logs via std.debug.print)
     └── invention/structured_lattice.zig   id-keyed frequency promotion + cosine
         └── invention/feature_sim.zig      char-trigram FeatureSet + cosine similarity
 
