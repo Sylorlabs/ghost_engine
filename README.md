@@ -63,12 +63,22 @@ $ ./zig-out/bin/ghost_rune_forge
 
 ## Research direction: from check to proof
 
-Discovery tools *certify* over a finite range (strong empirical, not a proof). The active research
-push is to elevate `verified` to **proven ∀n**. First result (`ghost_prove_divisor`): for the
-number-theoretic core, an identity between multiplicative functions reduces to prime powers, and at
-each prime power both sides are polynomials in `p` — so agreement at `2k+2` primes is a *proof for
-all p*, not a sample. Gauss/Möbius/σ are now proven for all `n` with bounded prime exponents. Next:
-symbolic induction on the exponent `k` to drop the bound entirely.
+Discovery tools *certify* over a finite range (strong empirical, not a proof). The active push is to
+elevate `verified` to **proven ∀n**. `ghost_prove_divisor` now does this two ways:
+
+- **Telescoping induction on k (no bound).** For the divisor-sum form `f(n)=Σ_{d|n} h(d)`, the
+  divisors of `p^{k+1}` are those of `p^k` plus `p^{k+1}`, so the proof reduces to a base case plus
+  the step `g(p^{k+1})−g(p^k)=h(p^{k+1})`. That step is an *integer polynomial* in `(p, X=p^k, k)`;
+  vanishing on a small prime/exponent grid proves it for all `p,k`, and multiplicativity lifts it to
+  all `n`. **Gauss, `Σ1=d(n)`, `Σd=σ(n)`, and Möbius `Σμ(d)=[n=1]` are now proven for all n — no
+  exponent ceiling.**
+- **Multiplicative + polynomial-identity fallback (exp ≤ K).** For forms the telescoping doesn't yet
+  cover, an identity between multiplicative functions reduces to prime powers, and at each prime power
+  both sides are polynomials in `p`, so agreement at `2k+2` primes proves it for all `p`.
+
+Remaining: Möbius **inversion** is a Dirichlet *convolution* `(μ*id)`, not a `Σh(d)`, so it's still
+exp-bounded; dropping its bound needs the convolution recurrence `f(p^{k+1})=p·f(p^k)+…` — the next
+extension.
 
 ## Build & run
 

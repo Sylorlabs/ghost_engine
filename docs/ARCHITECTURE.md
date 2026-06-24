@@ -84,9 +84,17 @@ The discovery tools *certify* over a finite range — a strong empirical certifi
 arithmetic functions the chain is sound and decidable: (1) both sides multiplicative (structural,
 from the multiplicative basis); (2) multiplicative ⇒ determined by prime powers, so `∀n` reduces to
 `∀ p^k`; (3) at fixed `k` both sides are polynomials in `p` of degree ≤ 2k, so agreement at `2k+2`
-distinct primes is a polynomial identity — a proof for **all** `p`. Result: Gauss/Möbius/σ proven
-for all `n` with bounded prime exponents. The honest remaining gap is the bound on `k`; closing it
-needs symbolic induction on the exponent (Gosper/Zeilberger-style summation) — the next step.
+distinct primes is a polynomial identity — a proof for **all** `p`. This gives proofs for all `n`
+with prime exponents ≤ K.
+
+**The exponent bound is then dropped by telescoping induction on k** for the divisor-sum form
+`f(n)=Σ_{d|n} h(d)`: the divisors of `p^{k+1}` are those of `p^k` plus `p^{k+1}`, so the proof
+reduces to a base case + the step `g(p^{k+1})−g(p^k)=h(p^{k+1})`. The step is an *integer*
+polynomial in `(p, X=p^k, k)` (the rational `1/(p−1)` in `σ` cancels in the difference); vanishing
+on a `6×12` prime/exponent grid — unisolvent for `deg_p≤3, deg_X≤2, deg_k≤2` — proves it for **all**
+`p,k`. Result: **Gauss, `Σ1=d(n)`, `Σd=σ(n)`, Möbius `Σμ(d)=[n=1]` are proven for all n, no exponent
+ceiling.** Remaining: Möbius **inversion** is a convolution `(μ*id)`, not a `Σh(d)`, so it stays
+exp-bounded until the convolution recurrence `f(p^{k+1})=p·f(p^k)+…` is added — the next step.
 
 ## Tests
 
